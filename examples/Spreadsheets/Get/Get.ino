@@ -98,7 +98,7 @@ void loop()
 
         //For Google Sheet API ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/getByDataFilter
 
-        bool success = GSheet.getByDataFilter(&response /* returned response */, "<spreadsheetId>" /* spreadsheet Id to request */, &dataFiltersArr /* array of data range to request by filter */, "true" /* include grid data */);
+        success = GSheet.getByDataFilter(&response /* returned response */, "<spreadsheetId>" /* spreadsheet Id to request */, &dataFiltersArr /* array of data range to request by filter */, "true" /* include grid data */);
         response.toString(Serial, true);
         Serial.println();
 

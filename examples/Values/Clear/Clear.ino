@@ -114,7 +114,7 @@ void loop()
 
         //For Google Sheet API ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/clear
         
-        bool success = GSheet.values.clear(&response /* returned response */, "<spreadsheetId>" /* spreadsheet Id to clear */, "Sheet1!A1:A3" /* range to clear */);
+        success = GSheet.values.clear(&response /* returned response */, "<spreadsheetId>" /* spreadsheet Id to clear */, "Sheet1!A1:A3" /* range to clear */);
         response.toString(Serial, true);
         Serial.println();
 

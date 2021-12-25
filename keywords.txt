@@ -1,0 +1,56 @@
+###################################################
+# Syntax Coloring Map Google-Spreadsheet-ESP-Client
+###################################################
+
+#########################################
+# Classes (KEYWORD1)
+#########################################
+
+Spreadsheet KEYWORD1
+GSS_Sheets  KEYWORD1
+GSS_Values  KEYWORD1
+GSS_Metadata    KEYWORD1
+TokenInfo   KEYWORD1
+
+##################################
+# Methods and Functions (KEYWORD2)
+##################################
+
+begin   KEYWORD2
+setTokenCallback    KEYWORD2
+ready   KEYWORD2
+batchUpdate KEYWORD2
+create  KEYWORD2
+deleteFile  KEYWORD2
+deleteFiles KEYWORD2
+listFiles   KEYWORD2
+copyTo  KEYWORD2
+get KEYWORD2
+batchGet    KEYWORD2
+batchGetByDataFilter    KEYWORD2
+append  KEYWORD2
+update  KEYWORD2
+batchUpdate KEYWORD2
+batchUpdateByDataFilter KEYWORD2
+clear   KEYWORD2
+batchClear  KEYWORD2
+batchClearByDataFilter  KEYWORD2
+get KEYWORD2
+search  KEYWORD2
+getTokenType    KEYWORD2
+getTokenStatus  KEYWORD2
+getTokenError   KEYWORD2
+accessToken KEYWORD2
+getExpiredTimestamp KEYWORD2
+sdBegin KEYWORD2
+sdMMCBegin  KEYWORD2
+setCert KEYWORD2
+setCertFile KEYWORD2
+
+
+######################
+# Constants (LITERAL1)
+######################
+sheets  LITERAL1
+values  LITERAL1
+developerMetadata   LITERAL1

@@ -2,7 +2,7 @@
   "name": "ESP-Google-Sheet-Client",
   "version": "1.0.0",
   "keywords": "communication, REST, esp32, esp8266, arduino",
-  "description": "Arduino Google Sheet REST client library for ESP8266 and ESP32. This library allows user to communicate with Google Sheet API to read, edit and delete the spreadsheets",
+  "description": "Arduino Google Sheet REST client library for ESP8266 and ESP32. This library allows devices to communicate with Google Sheet API to read, edit and delete the spreadsheets",
   "repository": {
     "type": "git",
     "url": "https://github.com/mobizt/ESP-Google-Sheet-Client.git"

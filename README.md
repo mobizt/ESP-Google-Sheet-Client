@@ -1,25 +1,25 @@
 # Arduino Google Sheet Client Library for ESP8266 and ESP32
 
 
-Arduino Google Sheet Client Library for ESP8266 and ESP32 v1.0.0.
+Arduino Google Sheet Client Library for ESP8266 and ESP32 v1.0.1.
 
 This library allows devices to authenticate and communicate with Google Sheet APIs using the Service Account.
 
 Devices will be able to read, update, append and clear sheet values. Create, read, list, and delete the spreadsheet are also supported.
 
 
-The spreadsheet that created using this library owned by the Service Account and shared access to the user.
+The spreadsheet that created using this library, owned by the Service Account and shared access to the user.
 
 
 You can create, edit and deploy the Apps Script code via extension of spreadsheet that created by this library except for run the script due to permission denied.
 
 
-Spreadsheet created or owned by you needed to share the access with Service Account's client email then library can read, edit except for delete the user's spreadsheet due to permission denied.
+Spreadsheet created or owned by you, needed to share the access with Service Account's client email then library can read, and edit except for delete the user's spreadsheet due to permission denied.
 
 
 ## Important Note
 
-The connection to Google Sheet API endpoint takes time and the time from sending request to complete response received can be as much as 3 seconds.
+The connection to Google Sheet API endpoint takes time and the time from sending request to the complete response received can be as much as 3 seconds.
 
 The speed is not the library or device issue unless the server issue.
 
@@ -1232,7 +1232,7 @@ bool search(FirebaseJson *response, <string> spreadsheetId, FirebaseJsonArray *d
 
 The MIT License (MIT)
 
-Copyright (C) 2021 K. Suwatchai (Mobizt)
+Copyright (C) 2022 K. Suwatchai (Mobizt)
 
 
 Permission is hereby granted, free of charge, to any person returning a copy of

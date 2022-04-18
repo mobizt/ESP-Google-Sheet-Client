@@ -1,40 +1,39 @@
 /**
- * Util class, SignerUtils.h version 1.0.1
- * 
- * This library supports Espressif ESP8266 and ESP32
- * 
- * Created May 4, 2021
- * 
- * This work is a part of Firebase ESP Client library
- * Copyright (c) 2021 K. Suwatchai (Mobizt)
- * 
+ * Util class, SignerUtils.h version 1.0.3
+ *
+ *
+ * Created April 18, 2022
+ *
+ * This work is a part of ESP Signer library
+ * Copyright (c) 2022 K. Suwatchai (Mobizt)
+ *
  * The MIT License (MIT)
- * Copyright (c)2021 K. Suwatchai (Mobizt)
- * 
- * 
+ * Copyright (c)2022 K. Suwatchai (Mobizt)
+ *
+ *
  * Permission is hereby granted, free of charge, to any person returning a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
  * the Software, and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+ */
 
 #ifndef SIGNER_UTILS_H
 #define SIGNER_UTILS_H
 
 #include <Arduino.h>
-#include "SignerCommon.h"
+#include "SignerConst.h"
 
 class SignerUtils
 {
@@ -177,15 +176,6 @@ public:
         return nullptr;
     }
 
-    void appendP(MBSTRING &buf, PGM_P p, bool empty = false)
-    {
-        if (empty)
-            buf.clear();
-        char *b = strP(p);
-        buf += b;
-        delP(&b);
-    }
-
     void strcat_c(char *str, char c)
     {
         for (; *str; str++)
@@ -308,24 +298,24 @@ public:
         return -1;
     }
 
-    void ltrim(MBSTRING &str, const MBSTRING &chars = " ")
+    void ltrim(MB_String &str, const MB_String &chars = " ")
     {
         size_t pos = str.find_first_not_of(chars);
-        if (pos != MBSTRING::npos)
+        if (pos != MB_String::npos)
             str.erase(0, pos);
     }
 
-    void rtrim(MBSTRING &str, const MBSTRING &chars = " ")
+    void rtrim(MB_String &str, const MB_String &chars = " ")
     {
         size_t pos = str.find_last_not_of(chars);
-        if (pos != MBSTRING::npos)
+        if (pos != MB_String::npos)
             str.erase(pos + 1);
     }
 
-    inline MBSTRING trim(const MBSTRING &s)
+    inline MB_String trim(const MB_String &s)
     {
-        MBSTRING chars = " ";
-        MBSTRING str = s;
+        MB_String chars = " ";
+        MB_String str = s;
         ltrim(str, chars);
         rtrim(str, chars);
         return str;
@@ -382,7 +372,7 @@ public:
         return p;
     }
 
-    void substr(MBSTRING &str, const char *s, int offset, size_t len)
+    void substr(MB_String &str, const char *s, int offset, size_t len)
     {
         if (!s)
             return;
@@ -400,11 +390,11 @@ public:
         for (int i = offset; i < last; i++)
             str += s[i];
     }
-    void splitString(const char *str, std::vector<MBSTRING> out, const char delim)
+    void splitString(const char *str, std::vector<MB_String> out, const char delim)
     {
         int current = 0, previous = 0;
         current = strpos(str, delim, 0);
-        MBSTRING s;
+        MB_String s;
         while (current != -1)
         {
             s.clear();
@@ -454,9 +444,9 @@ public:
         return o - dec;
     }
 
-    MBSTRING url_encode(const MBSTRING &s)
+    MB_String url_encode(const MB_String &s)
     {
-        MBSTRING ret;
+        MB_String ret;
         ret.reserve(s.length() * 3 + 1);
         for (size_t i = 0, l = s.size(); i < l; i++)
         {
@@ -633,7 +623,7 @@ public:
         return idx;
     }
 
-    int readLine(WiFiClient *stream, MBSTRING &buf)
+    int readLine(WiFiClient *stream, MB_String &buf)
     {
         int res = -1;
         char c = 0;
@@ -692,7 +682,7 @@ public:
                     delP(&tmp);
                 }
 
-                //last chunk
+                // last chunk
                 if (chunkedSize < 1)
                     olen = -1;
             }
@@ -711,7 +701,7 @@ public:
 
                 if (readLen > 0)
                 {
-                    //chunk may contain trailing
+                    // chunk may contain trailing
                     if (dataLen + readLen - 2 < chunkedSize)
                     {
                         dataLen += readLen;
@@ -739,7 +729,7 @@ public:
         return olen;
     }
 
-    int readChunkedData(WiFiClient *stream, MBSTRING &out, int &chunkState, int &chunkedSize, int &dataLen)
+    int readChunkedData(WiFiClient *stream, MB_String &out, int &chunkState, int &chunkedSize, int &dataLen)
     {
 
         char *tmp = nullptr;
@@ -751,7 +741,7 @@ public:
             chunkState = 1;
             chunkedSize = -1;
             dataLen = 0;
-            MBSTRING s;
+            MB_String s;
             int readLen = readLine(stream, s);
             if (readLen)
             {
@@ -773,7 +763,7 @@ public:
                     delP(&tmp);
                 }
 
-                //last chunk
+                // last chunk
                 if (chunkedSize < 1)
                     olen = -1;
             }
@@ -785,12 +775,12 @@ public:
 
             if (chunkedSize > -1)
             {
-                MBSTRING s;
+                MB_String s;
                 int readLen = readLine(stream, s);
 
                 if (readLen > 0)
                 {
-                    //chunk may contain trailing
+                    // chunk may contain trailing
                     if (dataLen + readLen - 2 < chunkedSize)
                     {
                         dataLen += readLen;
@@ -857,9 +847,9 @@ public:
         return nullptr;
     }
 
-    void getHeaderStr(const MBSTRING &in, MBSTRING &out, PGM_P beginH, PGM_P endH, int &beginPos, int endPos)
+    void getHeaderStr(const MB_String &in, MB_String &out, PGM_P beginH, PGM_P endH, int &beginPos, int endPos)
     {
-        MBSTRING _in = in;
+        MB_String _in = in;
 
         char *tmp = strP(beginH);
         int p1 = strpos(in.c_str(), tmp, beginPos);
@@ -912,7 +902,7 @@ public:
         }
     }
 
-    bool decodeBase64Str(const MBSTRING &src, std::vector<uint8_t> &out)
+    bool decodeBase64Str(const MB_String &src, std::vector<uint8_t> &out)
     {
         unsigned char *dtable = (unsigned char *)newP(256);
         memset(dtable, 0x80, 256);
@@ -1068,7 +1058,7 @@ public:
         return false;
     }
 
-    void sendBase64Stream(WiFiClient *client, const MBSTRING &filePath, uint8_t storageType, fs::File &file)
+    void sendBase64Stream(WiFiClient *client, const MB_String &filePath, uint8_t storageType, fs::File &file)
     {
 
         if (storageType == esp_signer_mem_storage_type_flash)
@@ -1430,12 +1420,12 @@ public:
         return ret;
     }
 
-    MBSTRING encodeBase64Str(const unsigned char *src, size_t len)
+    MB_String encodeBase64Str(const unsigned char *src, size_t len)
     {
         return encodeBase64Str((uint8_t *)src, len);
     }
 
-    MBSTRING encodeBase64Str(uint8_t *src, size_t len)
+    MB_String encodeBase64Str(uint8_t *src, size_t len)
     {
         unsigned char *out, *pos;
         const unsigned char *end, *in;
@@ -1447,7 +1437,7 @@ public:
 
         olen = 4 * ((len + 2) / 3); /* 3-byte blocks to 4-byte */
 
-        MBSTRING outStr;
+        MB_String outStr;
         outStr.resize(olen);
         out = (unsigned char *)&outStr[0];
 
@@ -1570,7 +1560,7 @@ public:
         if (!config)
             return false;
 
-        MBSTRING filepath = "/sdtest01.txt";
+        MB_String filepath = "/sdtest01.txt";
 #if defined(CARD_TYPE_SD)
         if (!sdBegin(config->_int.sd_config.ss, config->_int.sd_config.sck, config->_int.sd_config.miso, config->_int.sd_config.mosi))
             return false;
@@ -1609,7 +1599,7 @@ public:
 
         SD_FS.remove(filepath.c_str());
 
-        MBSTRING().swap(filepath);
+        MB_String().swap(filepath);
 
         config->_int.esp_signer_sd_rdy = true;
 
@@ -1627,7 +1617,6 @@ public:
         _callback_function();
     }
 #endif
-
 
     bool waitIdle(int &httpCode)
     {
@@ -1647,12 +1636,12 @@ public:
         return true;
     }
 
-    void splitTk(const MBSTRING &str, std::vector<MBSTRING> &tk, const char *delim)
+    void splitTk(const MB_String &str, std::vector<MB_String> &tk, const char *delim)
     {
         std::size_t current, previous = 0;
         current = str.find(delim, previous);
-        MBSTRING s;
-        while (current != MBSTRING::npos)
+        MB_String s;
+        while (current != MB_String::npos)
         {
             s = str.substr(previous, current - previous);
             tk.push_back(s);
@@ -1661,7 +1650,7 @@ public:
         }
         s = str.substr(previous, current - previous);
         tk.push_back(s);
-        MBSTRING().swap(s);
+        MB_String().swap(s);
     }
 
     bool reconnect(unsigned long dataTime)
@@ -1696,7 +1685,7 @@ public:
             {
                 if (config->_int.esp_signer_reconnect_wifi)
                 {
-                    if (config->timeout.wifiReconnect < 10000 || config->timeout.wifiReconnect > 5 *60 *1000)
+                    if (config->timeout.wifiReconnect < 10000 || config->timeout.wifiReconnect > 5 * 60 * 1000)
                         config->timeout.wifiReconnect = 10000;
                     if (millis() - config->_int.esp_signer_last_reconnect_millis > config->timeout.wifiReconnect)
                     {

@@ -1,21 +1,16 @@
 #ifndef ESP_GOOGLE_SHEET_CLIENT_VERSION
-#define ESP_GOOGLE_SHEET_CLIENT_VERSION "1.0.0"
+#define ESP_GOOGLE_SHEET_CLIENT_VERSION "1.0.1"
 #endif
 
 /**
- * Google Sheet Client, ESP_Google_Sheet_Client.h v1.0.0
+ * Google Sheet Client, ESP_Google_Sheet_Client.h v1.0.1
  * 
  * This library supports Espressif ESP8266 and ESP32 MCUs
  * 
- * Created December 19, 2021
+ * Created April 18, 2022
  *
- * Initial Released
- * 
- * This work is a part of Firebase ESP Client library
- * Copyright (c) 2021 K. Suwatchai (Mobizt)
- * 
  * The MIT License (MIT)
- * Copyright (c) 2021 K. Suwatchai (Mobizt)
+ * Copyright (c) 2022 K. Suwatchai (Mobizt)
  * 
  * 
  * Permission is hereby granted, free of charge, to any person returning a copy of
@@ -78,7 +73,7 @@ private:
     SignerConfig config;
     int cert_addr = 0;
     bool cert_updated = false;
-    MBSTRING certFile;
+    MB_String certFile;
     esp_google_sheet_file_storage_type certFileStorageType;
 
     void auth(const char *client_email, const char *project_id, const char *private_key);
@@ -104,9 +99,9 @@ private:
     bool getSpreadsheetByDataFilter(FirebaseJson *response, const char *spreadsheetId, FirebaseJsonArray *dataFiltersArray, const char *includeGridData = "");
     bool deleteFiles(FirebaseJson *response);
     bool listFiles(FirebaseJson *response, uint32_t pageSize = 5, const char *orderBy = "", const char *pageToken = "");
-    void beginRequest(FirebaseJson *response, MBSTRING &req, host_type_t host_type);
-    void addHeader(MBSTRING &req, host_type_t host_type, int len = -1);
-    bool processRequest(FirebaseJson *response, MBSTRING &req, int &httpcode);
+    void beginRequest(FirebaseJson *response, MB_String &req, host_type_t host_type);
+    void addHeader(MB_String &req, host_type_t host_type, int len = -1);
+    bool processRequest(FirebaseJson *response, MB_String &req, int &httpcode);
     void mUpdateInit(FirebaseJson *js, FirebaseJsonArray *rangeArr, const char *valueInputOption, const char *includeValuesInResponse, const char *responseValueRenderOption, const char *responseDateTimeRenderOption);
     bool mUpdate(bool append, operation_type_t type, FirebaseJson *response, const char *spreadsheetId, const char *range, FirebaseJson *valueRange, const char *valueInputOption = "USER_ENTERED", const char *insertDataOption = "", const char *includeValuesInResponse = "", const char *responseValueRenderOption = "", const char *responseDateTimeRenderOption = "");
     bool mClear(FirebaseJson *response, const char *spreadsheetId, const char *ranges, operation_type_t type);
@@ -542,16 +537,16 @@ private:
 
 protected:
     template <typename T>
-    auto toString(const T &val) -> typename FB_JS::enable_if<FB_JS::is_std_string<T>::value || FB_JS::is_arduino_string<T>::value || FB_JS::is_mb_string<T>::value || FB_JS::is_same<T, StringSumHelper>::value, const char *>::type { return val.c_str(); }
+    auto toString(const T &val) -> typename mb_string::enable_if<mb_string::is_std_string<T>::value || mb_string::is_arduino_string<T>::value || mb_string::is_mb_string<T>::value || mb_string::is_same<T, StringSumHelper>::value, const char *>::type { return val.c_str(); }
 
     template <typename T>
-    auto toString(T val) -> typename FB_JS::enable_if<FB_JS::is_const_chars<T>::value, const char *>::type { return val; }
+    auto toString(T val) -> typename mb_string::enable_if<mb_string::is_const_chars<T>::value, const char *>::type { return val; }
 
     template <typename T>
-    auto toString(T val) -> typename FB_JS::enable_if<FB_JS::fs_t<T>::value, const char *>::type { return (const char *)val; }
+    auto toString(T val) -> typename mb_string::enable_if<mb_string::fs_t<T>::value, const char *>::type { return (const char *)val; }
 
     template <typename T>
-    auto toString(T val) -> typename FB_JS::enable_if<FB_JS::is_same<T, std::nullptr_t>::value, const char *>::type { return ""; }
+    auto toString(T val) -> typename mb_string::enable_if<mb_string::is_same<T, std::nullptr_t>::value, const char *>::type { return ""; }
 };
 
 class GSheet_Sheets
@@ -591,16 +586,16 @@ private:
 
 protected:
     template <typename T>
-    auto toString(const T &val) -> typename FB_JS::enable_if<FB_JS::is_std_string<T>::value || FB_JS::is_arduino_string<T>::value || FB_JS::is_mb_string<T>::value || FB_JS::is_same<T, StringSumHelper>::value, const char *>::type { return val.c_str(); }
+    auto toString(const T &val) -> typename mb_string::enable_if<mb_string::is_std_string<T>::value || mb_string::is_arduino_string<T>::value || mb_string::is_mb_string<T>::value || mb_string::is_same<T, StringSumHelper>::value, const char *>::type { return val.c_str(); }
 
     template <typename T>
-    auto toString(T val) -> typename FB_JS::enable_if<FB_JS::is_const_chars<T>::value, const char *>::type { return val; }
+    auto toString(T val) -> typename mb_string::enable_if<mb_string::is_const_chars<T>::value, const char *>::type { return val; }
 
     template <typename T>
-    auto toString(T val) -> typename FB_JS::enable_if<FB_JS::fs_t<T>::value, const char *>::type { return (const char *)val; }
+    auto toString(T val) -> typename mb_string::enable_if<mb_string::fs_t<T>::value, const char *>::type { return (const char *)val; }
 
     template <typename T>
-    auto toString(T val) -> typename FB_JS::enable_if<FB_JS::is_same<T, std::nullptr_t>::value, const char *>::type { return ""; }
+    auto toString(T val) -> typename mb_string::enable_if<mb_string::is_same<T, std::nullptr_t>::value, const char *>::type { return ""; }
 };
 
 class GSheet_Metadata
@@ -654,16 +649,16 @@ private:
 
 protected:
     template <typename T>
-    auto toString(const T &val) -> typename FB_JS::enable_if<FB_JS::is_std_string<T>::value || FB_JS::is_arduino_string<T>::value || FB_JS::is_mb_string<T>::value || FB_JS::is_same<T, StringSumHelper>::value, const char *>::type { return val.c_str(); }
+    auto toString(const T &val) -> typename mb_string::enable_if<mb_string::is_std_string<T>::value || mb_string::is_arduino_string<T>::value || mb_string::is_mb_string<T>::value || mb_string::is_same<T, StringSumHelper>::value, const char *>::type { return val.c_str(); }
 
     template <typename T>
-    auto toString(T val) -> typename FB_JS::enable_if<FB_JS::is_const_chars<T>::value, const char *>::type { return val; }
+    auto toString(T val) -> typename mb_string::enable_if<mb_string::is_const_chars<T>::value, const char *>::type { return val; }
 
     template <typename T>
-    auto toString(T val) -> typename FB_JS::enable_if<FB_JS::fs_t<T>::value, const char *>::type { return (const char *)val; }
+    auto toString(T val) -> typename mb_string::enable_if<mb_string::fs_t<T>::value, const char *>::type { return (const char *)val; }
 
     template <typename T>
-    auto toString(T val) -> typename FB_JS::enable_if<FB_JS::is_same<T, std::nullptr_t>::value, const char *>::type { return ""; }
+    auto toString(T val) -> typename mb_string::enable_if<mb_string::is_same<T, std::nullptr_t>::value, const char *>::type { return ""; }
 };
 
 class ESP_Google_Sheet_Client
@@ -937,16 +932,16 @@ private:
 
 protected:
     template <typename T>
-    auto toString(const T &val) -> typename FB_JS::enable_if<FB_JS::is_std_string<T>::value || FB_JS::is_arduino_string<T>::value || FB_JS::is_mb_string<T>::value || FB_JS::is_same<T, StringSumHelper>::value, const char *>::type { return val.c_str(); }
+    auto toString(const T &val) -> typename mb_string::enable_if<mb_string::is_std_string<T>::value || mb_string::is_arduino_string<T>::value || mb_string::is_mb_string<T>::value || mb_string::is_same<T, StringSumHelper>::value, const char *>::type { return val.c_str(); }
 
     template <typename T>
-    auto toString(T val) -> typename FB_JS::enable_if<FB_JS::is_const_chars<T>::value, const char *>::type { return val; }
+    auto toString(T val) -> typename mb_string::enable_if<mb_string::is_const_chars<T>::value, const char *>::type { return val; }
 
     template <typename T>
-    auto toString(T val) -> typename FB_JS::enable_if<FB_JS::fs_t<T>::value, const char *>::type { return (const char *)val; }
+    auto toString(T val) -> typename mb_string::enable_if<mb_string::fs_t<T>::value, const char *>::type { return (const char *)val; }
 
     template <typename T>
-    auto toString(T val) -> typename FB_JS::enable_if<FB_JS::is_same<T, std::nullptr_t>::value, const char *>::type { return ""; }
+    auto toString(T val) -> typename mb_string::enable_if<mb_string::is_same<T, std::nullptr_t>::value, const char *>::type { return ""; }
 };
 
 extern ESP_Google_Sheet_Client GSheet;

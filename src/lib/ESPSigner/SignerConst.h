@@ -1,30 +1,29 @@
 
 /**
- * Created December 12, 2021
- * 
- * Copyright (c) 2021 K. Suwatchai (Mobizt)
- * 
+ * Created April 18, 2022
+ *
+ *
  * The MIT License (MIT)
- * Copyright (c) 2021 K. Suwatchai (Mobizt)
- * 
- * 
+ * Copyright (c) 2022 K. Suwatchai (Mobizt)
+ *
+ *
  * Permission is hereby granted, free of charge, to any person returning a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
  * the Software, and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+ */
 
 #ifndef FB_COMMON_H_
 #define FB_COMMON_H_
@@ -48,7 +47,6 @@
 #include "./wcs/esp8266/ESP_Signer_TCP_Client.h"
 #define FS_NO_GLOBALS
 #endif
-
 
 #define SD_CS_PIN 15
 #define MAX_REDIRECT 5
@@ -106,8 +104,8 @@ typedef struct esp_signer_spi_ethernet_module_t
 
 struct esp_signer_url_info_t
 {
-    MBSTRING host;
-    MBSTRING uri;
+    MB_String host;
+    MB_String uri;
 };
 
 struct esp_signer_server_response_data_t
@@ -119,24 +117,24 @@ struct esp_signer_server_response_data_t
     int payloadOfs = 0;
     bool noContent = false;
     bool isChunkedEnc = false;
-    MBSTRING location = "";
-    MBSTRING contentType = "";
-    MBSTRING connection = "";
-    MBSTRING transferEnc = "";
+    MB_String location = "";
+    MB_String contentType = "";
+    MB_String connection = "";
+    MB_String transferEnc = "";
 };
 
 struct esp_signer_auth_token_error_t
 {
-    MBSTRING message;
+    MB_String message;
     int code = 0;
 };
 
 struct esp_signer_auth_token_info_t
 {
-    MBSTRING access_token;
-    MBSTRING auth_type;
-    MBSTRING jwt;
-    MBSTRING scope;
+    MB_String access_token;
+    MB_String auth_type;
+    MB_String jwt;
+    MB_String scope;
     unsigned long expires = 0;
     unsigned long last_millis = 0;
     esp_signer_auth_token_type token_type = esp_signer_token_type_undefined;
@@ -146,29 +144,29 @@ struct esp_signer_auth_token_info_t
 
 struct esp_signer_service_account_data_info_t
 {
-    MBSTRING client_email;
-    MBSTRING client_id;
-    MBSTRING project_id;
-    MBSTRING private_key_id;
+    MB_String client_email;
+    MB_String client_id;
+    MB_String project_id;
+    MB_String private_key_id;
     const char *private_key = "";
 };
 
 struct esp_signer_auth_signin_user_t
 {
-    MBSTRING email;
-    MBSTRING password;
+    MB_String email;
+    MB_String password;
 };
 
 struct esp_signer_auth_cert_t
 {
     const char *data = "";
-    MBSTRING file;
+    MB_String file;
     esp_signer_mem_storage_type file_storage = esp_signer_mem_storage_type_flash;
 };
 
 struct esp_signer_service_account_file_info_t
 {
-    MBSTRING path;
+    MB_String path;
     esp_signer_mem_storage_type storage_type = esp_signer_mem_storage_type_flash;
 };
 
@@ -187,8 +185,8 @@ struct esp_signer_token_signer_resources_t
     unsigned long preRefreshSeconds = 60;
     unsigned long expiredSeconds = 3600;
     unsigned long reqTO = 2000;
-    MBSTRING pk;
-    size_t hashSize = 32; //SHA256 size (256 bits or 32 bytes)
+    MB_String pk;
+    size_t hashSize = 32; // SHA256 size (256 bits or 32 bytes)
     size_t signatureSize = 256;
 #if defined(ESP32)
     uint8_t *hash = nullptr;
@@ -196,10 +194,10 @@ struct esp_signer_token_signer_resources_t
     char *hash = nullptr;
 #endif
     unsigned char *signature = nullptr;
-    MBSTRING encHeader;
-    MBSTRING encPayload;
-    MBSTRING encHeadPayload;
-    MBSTRING encSignature;
+    MB_String encHeader;
+    MB_String encPayload;
+    MB_String encHeadPayload;
+    MB_String encSignature;
 #if defined(ESP32)
     mbedtls_pk_context *pk_ctx = nullptr;
     mbedtls_entropy_context *entropy_ctx = nullptr;
@@ -212,7 +210,6 @@ struct esp_signer_token_signer_resources_t
     FirebaseJsonData *result = nullptr;
     struct esp_signer_auth_token_info_t tokens;
 };
-
 
 struct esp_signer_cfg_int_t
 {
@@ -238,21 +235,21 @@ struct esp_signer_cfg_int_t
 
 struct esp_signer_client_timeout_t
 {
-    //WiFi reconnect timeout (interval) in ms (10 sec - 5 min) when WiFi disconnected.
+    // WiFi reconnect timeout (interval) in ms (10 sec - 5 min) when WiFi disconnected.
     uint16_t wifiReconnect = 10 * 1000;
 
-    //Socket connection and ssl handshake timeout in ms (1 sec - 1 min).
+    // Socket connection and ssl handshake timeout in ms (1 sec - 1 min).
     unsigned long socketConnection = 10 * 1000;
 
-    //unused.
+    // unused.
     unsigned long sslHandshake = 0;
 
-    //Server response read timeout in ms (1 sec - 1 min).
+    // Server response read timeout in ms (1 sec - 1 min).
     unsigned long serverResponse = 10 * 1000;
 
     uint16_t tokenGenerationBeginStep = 300;
 
-    uint16_t tokenGenerationError = 5*1000;
+    uint16_t tokenGenerationError = 5 * 1000;
 };
 
 typedef struct token_info_t
@@ -277,20 +274,19 @@ struct esp_signer_cfg_t
     struct esp_signer_client_timeout_t timeout;
 };
 
-
 struct esp_signer_session_info_t
 {
     bool buffer_ovf = false;
     bool chunked_encoding = false;
     bool connected = false;
-    MBSTRING host = "";
+    MB_String host = "";
     unsigned long last_conn_ms = 0;
     const uint32_t conn_timeout = 3 * 60 * 1000;
 
     uint16_t resp_size = 2048;
     int http_code = -1000;
     int content_length = 0;
-    MBSTRING error = "";
+    MB_String error = "";
 
 #if defined(ESP8266)
     uint16_t bssl_rx_size = 512;
@@ -302,8 +298,8 @@ typedef struct esp_signer_cfg_t SignerConfig;
 
 typedef std::function<void(void)> esp_signer_callback_function_t;
 
-//static const char esp_signer_pgm_str_1[] PROGMEM = "true";
-//static const char esp_signer_pgm_str_2[] PROGMEM = "double";
+// static const char esp_signer_pgm_str_1[] PROGMEM = "true";
+// static const char esp_signer_pgm_str_2[] PROGMEM = "double";
 static const char esp_signer_pgm_str_3[] PROGMEM = "Connection: ";
 static const char esp_signer_pgm_str_4[] PROGMEM = "\r\n";
 static const char esp_signer_pgm_str_5[] PROGMEM = "Content-Type: ";
@@ -364,7 +360,7 @@ static const char esp_signer_pgm_str_59[] PROGMEM = "urn:ietf:params:oauth:grant
 static const char esp_signer_pgm_str_60[] PROGMEM = "assertion";
 static const char esp_signer_pgm_str_61[] PROGMEM = " HTTP/1.1\r\n";
 static const char esp_signer_pgm_str_62[] PROGMEM = "Host: ";
-//static const char esp_signer_pgm_str_63[] PROGMEM = "\r\n";
+// static const char esp_signer_pgm_str_63[] PROGMEM = "\r\n";
 static const char esp_signer_pgm_str_64[] PROGMEM = "User-Agent: ESP\r\n";
 static const char esp_signer_pgm_str_65[] PROGMEM = "Content-Length: ";
 static const char esp_signer_pgm_str_66[] PROGMEM = "Content-Type: ";

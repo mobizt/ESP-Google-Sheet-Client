@@ -1,5 +1,5 @@
 /**
- * Google's OAuth2.0 Access token Generation class, Signer.h version 1.1.1
+ * Google's OAuth2.0 Access token Generation class, Signer.h version 1.1.2
  * 
  * This library used RS256 for signing algorithm.
  * 
@@ -7,13 +7,10 @@
  * 
  * This library supports Espressif ESP8266 and ESP32
  * 
- * Created November 12, 2021
- * 
- * This work is a part of Firebase ESP Client library
- * Copyright (c) 2021 K. Suwatchai (Mobizt)
+ * Created April 18, 2022
  * 
  * The MIT License (MIT)
- * Copyright (c) 2021 K. Suwatchai (Mobizt)
+ * Copyright (c) 2022 K. Suwatchai (Mobizt)
  * 
  * 
  * Permission is hereby granted, free of charge, to any person returning a copy of
@@ -170,13 +167,13 @@ protected:
     void setTokenError(int code);
     bool handleSignerError(int code, int httpCode = 0);
     bool parseJsonResponse(PGM_P key_path);
-    bool handleServerResponse(int &httpCode);
+    bool handleTokenResponse(int &httpCode);
     void tokenProcessingTask();
     bool createJWT();
     bool requestTokens();
     void getExpiration(const char *exp);
     void checkToken();
-    void errorToString(int httpCode, MBSTRING &buff);
+    void errorToString(int httpCode, MB_String &buff);
     void sendTokenStatusCB();
     unsigned long getExpireMS();
     bool isExpired();

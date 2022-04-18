@@ -1,10 +1,10 @@
 /**
- * ESP Signer TCP Client v1.0.0
+ * ESP Signer TCP Client v1.0.1
  * 
- * Created December 11, 2021
+ * Created April 18, 2022
  * 
  * The MIT License (MIT)
- * Copyright (c) 2021 K. Suwatchai (Mobizt)
+ * Copyright (c) 2022 K. Suwatchai (Mobizt)
  * 
  * 
  * Copyright (c) 2015 Markus Sattler. All rights reserved.
@@ -45,8 +45,8 @@ ESP_SIGNER_TCP_Client::~ESP_SIGNER_TCP_Client()
     _wcs.reset(nullptr);
     _wcs.release();
   }
-  MBSTRING().swap(_host);
-  MBSTRING().swap(_CAFile);
+  MB_String().swap(_host);
+  MB_String().swap(_CAFile);
 }
 
 bool ESP_SIGNER_TCP_Client::begin(const char *host, uint16_t port)

@@ -1,29 +1,29 @@
 /**
- * ESP Signer TCP Client v1.0.0
- * 
- * Created December 11, 2021
- * 
+ * ESP Signer TCP Client v1.0.1
+ *
+ * Created April 18, 2022
+ *
  * The MIT License (MIT)
- * Copyright (c) 2021 K. Suwatchai (Mobizt)
- * 
- * 
+ * Copyright (c) 2022 K. Suwatchai (Mobizt)
+ *
+ *
  * Permission is hereby granted, free of charge, to any person returning a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
  * the Software, and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+ */
 
 #ifndef ESP_SIGNER_TCP_Client_CPP
 #define ESP_SIGNER_TCP_Client_CPP
@@ -39,33 +39,16 @@ ESP_SIGNER_TCP_Client::ESP_SIGNER_TCP_Client()
 ESP_SIGNER_TCP_Client::~ESP_SIGNER_TCP_Client()
 {
   release();
-  MBSTRING().swap(_host);
-  MBSTRING().swap(_CAFile);
+  MB_String().swap(_host);
+  MB_String().swap(_CAFile);
 }
 
 bool ESP_SIGNER_TCP_Client::begin(const char *host, uint16_t port)
 {
-  if (strcmp(_host.c_str(), host) != 0)
-    mflnChecked = false;
 
   _host = host;
   _port = port;
-
-  //probe for fragmentation support at the specified size
-  if (!mflnChecked)
-  {
-    fragmentable = _wcs->probeMaxFragmentLength(_host.c_str(), _port, chunkSize);
-    if (fragmentable)
-    {
-      _bsslRxSize = chunkSize;
-      _bsslTxSize = chunkSize;
-      _wcs->setBufferSizes(_bsslRxSize, _bsslTxSize);
-    }
-    mflnChecked = true;
-  }
-
-  if (!fragmentable)
-    _wcs->setBufferSizes(_bsslRxSize, _bsslTxSize);
+  _wcs->setBufferSizes(_bsslRxSize, _bsslTxSize);
 
   return true;
 }
@@ -118,6 +101,19 @@ bool ESP_SIGNER_TCP_Client::connect(void)
   return connected();
 }
 
+void ESP_SIGNER_TCP_Client::setInsecure()
+{
+  if (_wcs)
+    _wcs->setInsecure();
+}
+
+void ESP_SIGNER_TCP_Client::setBufferSizes(int rx, int tx)
+{
+  _bsslRxSize = rx;
+  _bsslTxSize = tx;
+  _wcs->setBufferSizes(rx, tx);
+}
+
 void ESP_SIGNER_TCP_Client::release()
 {
   if (_wcs)
@@ -135,7 +131,7 @@ void ESP_SIGNER_TCP_Client::setCACert(const char *caCert)
 
   release();
 
-  _wcs = std::unique_ptr<ESP_SIGNER_ESP_SSL_CLIENT>(new ESP_SIGNER_ESP_SSL_CLIENT());
+  _wcs = std::unique_ptr<ESP_SIGNER_WCS>(new ESP_SIGNER_WCS());
 
   _wcs->setBufferSizes(_bsslRxSize, _bsslTxSize);
 

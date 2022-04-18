@@ -223,6 +223,7 @@ struct esp_signer_cfg_int_t
     unsigned long esp_signer_last_jwt_begin_step_millis = 0;
     uint16_t esp_signer_reconnect_tmo = WIFI_RECONNECT_TIMEOUT;
     bool esp_signer_clock_rdy = false;
+    bool esp_signer_clock_init = false;
     float esp_signer_gmt_offset = 0;
     const char *esp_signer_caCert = nullptr;
     bool esp_signer_processing = false;

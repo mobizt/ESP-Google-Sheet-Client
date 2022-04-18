@@ -1,5 +1,5 @@
 /**
- * Google's OAuth2.0 Access token Generation class, Signer.h version 1.1.2
+ * Google's OAuth2.0 Access token Generation class, Signer.h version 1.1.4
  *
  * This library used RS256 for signing algorithm.
  *
@@ -238,11 +238,15 @@ bool ESP_Signer::handleToken()
                         config->signer.tokens.status = esp_signer_token_status_uninitialized;
                 }
 
-                config->signer.tokens.status = esp_signer_token_status_on_initialize;
-                config->signer.tokens.error.code = 0;
-                config->signer.tokens.error.message.clear();
-                config->_int.esp_signer_last_jwt_generation_error_cb_millis = 0;
-                sendTokenStatusCB();
+                if (config->signer.tokens.status != esp_signer_token_status_on_initialize)
+                {
+                    
+                    config->signer.tokens.status = esp_signer_token_status_on_initialize;
+                    config->signer.tokens.error.code = 0;
+                    config->signer.tokens.error.message.clear();
+                    config->_int.esp_signer_last_jwt_generation_error_cb_millis = 0;
+                    sendTokenStatusCB();
+                }
 
                 _token_processing_task_enable = true;
                 tokenProcessingTask();
@@ -1219,7 +1223,6 @@ void ESP_Signer::checkToken()
         config->signer.tokens.error.code = 0;
         config->signer.tokens.error.message.clear();
         config->_int.esp_signer_last_jwt_generation_error_cb_millis = 0;
-        config->signer.tokens.status = esp_signer_token_status_uninitialized;
         _token_processing_task_end_request = false;
         _token_processing_task_enable = false;
     }

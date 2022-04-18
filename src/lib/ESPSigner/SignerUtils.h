@@ -1,5 +1,5 @@
 /**
- * Util class, SignerUtils.h version 1.0.3
+ * Util class, SignerUtils.h version 1.0.4
  *
  *
  * Created April 18, 2022
@@ -1267,18 +1267,15 @@ public:
 
         if (!config->_int.esp_signer_clock_rdy || gmtOffset != config->_int.esp_signer_gmt_offset)
         {
+            if (gmtOffset != config->_int.esp_signer_gmt_offset)
+                config->_int.esp_signer_clock_init = false;
 
-            configTime(gmtOffset * 3600, 0, "pool.ntp.org", "time.nist.gov");
+            if (!config->_int.esp_signer_clock_init)
+                configTime(gmtOffset * 3600, 0, "pool.ntp.org", "time.nist.gov");
+
+            config->_int.esp_signer_clock_init = true;
 
             now = time(nullptr);
-            unsigned long timeout = millis();
-            while (now < default_ts)
-            {
-                now = time(nullptr);
-                if (now > default_ts || millis() - timeout > ntpTimeout)
-                    break;
-                delay(10);
-            }
         }
 
         config->_int.esp_signer_clock_rdy = now > default_ts;

@@ -1,5 +1,5 @@
 /**
- * Google's OAuth2.0 Access token Generation class, Signer.h version 1.1.5
+ * Google's OAuth2.0 Access token Generation class, Signer.h version 1.1.6
  *
  * This library used RS256 for signing algorithm.
  *
@@ -7,7 +7,7 @@
  *
  * This library supports Espressif ESP8266 and ESP32
  *
- * Created April 20, 2022
+ * Created April 23, 2022
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -53,7 +53,7 @@ void ESP_Signer::begin(SignerConfig *cfg)
     ut = new SignerUtils(config);
     config->signer.tokens.error.message.clear();
 
-    config->_int.esp_signer_reconnect_wifi = WiFi.getAutoReconnect();
+    config->internal.esp_signer_reconnect_wifi = WiFi.getAutoReconnect();
 
     if (config->service_account.json.path.length() > 0)
     {
@@ -65,13 +65,13 @@ void ESP_Signer::begin(SignerConfig *cfg)
         config->signer.tokens.token_type = esp_signer_token_type_oauth2_access_token;
 
     if (strlen_P(config->cert.data))
-        config->_int.esp_signer_caCert = config->cert.data;
+        config->internal.esp_signer_caCert = config->cert.data;
 
     if (config->cert.file.length() > 0)
     {
-        if (config->cert.file_storage == esp_signer_mem_storage_type_sd && !config->_int.esp_signer_sd_rdy)
-            config->_int.esp_signer_sd_rdy = ut->sdTest(config->_int.esp_signer_file);
-        else if ((config->cert.file_storage == esp_signer_mem_storage_type_flash) && !config->_int.esp_signer_flash_rdy)
+        if (config->cert.file_storage == esp_signer_mem_storage_type_sd && !config->internal.esp_signer_sd_rdy)
+            config->internal.esp_signer_sd_rdy = ut->sdTest(config->internal.esp_signer_file);
+        else if ((config->cert.file_storage == esp_signer_mem_storage_type_flash) && !config->internal.esp_signer_flash_rdy)
             ut->flashTest();
     }
 
@@ -93,39 +93,39 @@ bool ESP_Signer::parseSAFile()
     if (config->signer.pk.length() > 0)
         return false;
 
-    if (config->service_account.json.storage_type == esp_signer_mem_storage_type_sd && !config->_int.esp_signer_sd_rdy)
-        config->_int.esp_signer_sd_rdy = ut->sdTest(config->_int.esp_signer_file);
-    else if (config->service_account.json.storage_type == esp_signer_mem_storage_type_flash && !config->_int.esp_signer_flash_rdy)
+    if (config->service_account.json.storage_type == esp_signer_mem_storage_type_sd && !config->internal.esp_signer_sd_rdy)
+        config->internal.esp_signer_sd_rdy = ut->sdTest(config->internal.esp_signer_file);
+    else if (config->service_account.json.storage_type == esp_signer_mem_storage_type_flash && !config->internal.esp_signer_flash_rdy)
         ut->flashTest();
 
-    if (config->_int.esp_signer_sd_rdy || config->_int.esp_signer_flash_rdy)
+    if (config->internal.esp_signer_sd_rdy || config->internal.esp_signer_flash_rdy)
     {
         if (config->service_account.json.storage_type == esp_signer_mem_storage_type_flash)
         {
             if (FLASH_FS.exists(config->service_account.json.path.c_str()))
-                config->_int.esp_signer_file = FLASH_FS.open(config->service_account.json.path.c_str(), "r");
+                config->internal.esp_signer_file = FLASH_FS.open(config->service_account.json.path.c_str(), "r");
         }
         else
         {
             if (SD_FS.exists(config->service_account.json.path.c_str()))
-                config->_int.esp_signer_file = SD_FS.open(config->service_account.json.path.c_str(), "r");
+                config->internal.esp_signer_file = SD_FS.open(config->service_account.json.path.c_str(), "r");
         }
 
-        if (config->_int.esp_signer_file)
+        if (config->internal.esp_signer_file)
         {
             clearSA();
             config->signer.json = new FirebaseJson();
             config->signer.result = new FirebaseJsonData();
             char *tmp = nullptr;
 
-            size_t len = config->_int.esp_signer_file.size();
+            size_t len = config->internal.esp_signer_file.size();
             char *buf = (char *)ut->newP(len + 10);
-            if (config->_int.esp_signer_file.available())
+            if (config->internal.esp_signer_file.available())
             {
-                config->_int.esp_signer_file.readBytes(buf, len);
+                config->internal.esp_signer_file.readBytes(buf, len);
                 config->signer.json->setJsonData(buf);
             }
-            config->_int.esp_signer_file.close();
+            config->internal.esp_signer_file.close();
             ut->delP(&buf);
 
             if (parseJsonResponse(esp_signer_pgm_str_13))
@@ -200,30 +200,6 @@ bool ESP_Signer::handleToken()
     if (!config)
         return false;
 
-#if defined(ESP8266)
-    if ((config->cert.data != NULL || config->cert.file.length() > 0) && !config->_int.esp_signer_clock_rdy)
-    {
-        ut->idle();
-        time_t now = time(nullptr);
-        config->_int.esp_signer_clock_rdy = now > ut->default_ts;
-
-        if (!config->_int.esp_signer_clock_rdy)
-        {
-            ut->setClock(config->time_zone);
-
-            if (config->signer.tokens.status == esp_signer_token_status_uninitialized)
-            {
-                config->signer.tokens.status = esp_signer_token_status_on_initialize;
-                config->signer.tokens.error.code = 0;
-                config->signer.tokens.error.message.clear();
-                config->_int.esp_signer_last_jwt_generation_error_cb_millis = 0;
-                sendTokenStatusCB();
-            }
-            return false;
-        }
-    }
-#endif
-
     if (config->signer.tokens.token_type == esp_signer_token_type_oauth2_access_token && isExpired())
     {
 
@@ -240,11 +216,11 @@ bool ESP_Signer::handleToken()
 
                 if (config->signer.tokens.status != esp_signer_token_status_on_initialize)
                 {
-                    
+
                     config->signer.tokens.status = esp_signer_token_status_on_initialize;
                     config->signer.tokens.error.code = 0;
                     config->signer.tokens.error.message.clear();
-                    config->_int.esp_signer_last_jwt_generation_error_cb_millis = 0;
+                    config->internal.esp_signer_last_jwt_generation_error_cb_millis = 0;
                     sendTokenStatusCB();
                 }
 
@@ -278,8 +254,6 @@ bool ESP_Signer::isExpired()
 void ESP_Signer::tokenProcessingTask()
 {
 
-#if defined(ESP32)
-
     if (config->signer.tokenTaskRunning)
         return;
 
@@ -287,18 +261,54 @@ void ESP_Signer::tokenProcessingTask()
 
     config->signer.tokenTaskRunning = true;
 
+    bool sslValidTime = false;
+
+#if defined(ESP8266)
+    if (config->cert.data != NULL || config->cert.file.length() > 0)
+        sslValidTime = true;
+#endif
+
     while (!ret && config->signer.tokens.status != esp_signer_token_status_ready)
     {
         delay(0);
 
-        if (config->signer.step == esp_signer_jwt_generation_step_begin && (millis() - config->_int.esp_signer_last_jwt_begin_step_millis > config->timeout.tokenGenerationBeginStep || config->_int.esp_signer_last_jwt_begin_step_millis == 0))
+        // check time if clock synching once set
+        if (!config->internal.esp_signer_clock_rdy && (config->internal.esp_signer_clock_synched || sslValidTime))
         {
-            config->_int.esp_signer_last_jwt_begin_step_millis = millis();
-            ut->setClock(config->time_zone);
-            time_t now = time(nullptr);
-            config->_int.esp_signer_clock_rdy = now > ut->default_ts;
+            if (millis() - config->internal.esp_signer_last_time_sync_millis > 1500)
+            {
+                config->internal.esp_signer_last_time_sync_millis = millis();
 
-            if (config->_int.esp_signer_clock_rdy)
+                if (millis() - config->internal.esp_signer_last_ntp_sync_timeout_millis > config->timeout.ntpServerRequest)
+                {
+                    config->internal.esp_signer_last_ntp_sync_timeout_millis = millis();
+                    config->signer.tokens.error.message.clear();
+                    setTokenError(ESP_SIGNER_ERROR_NTP_SYNC_TIMED_OUT);
+                    sendTokenStatusCB();
+                    config->signer.tokens.status = esp_signer_token_status_on_initialize;
+                    config->internal.esp_signer_last_jwt_generation_error_cb_millis = 0;
+                }
+
+                // set clock again if timed out
+                config->internal.esp_signer_clock_synched = false;
+            }
+
+            // check or set time again
+            ut->syncClock(config->time_zone);
+
+            if (!config->internal.esp_signer_clock_rdy)
+            {
+                config->signer.tokenTaskRunning = false;
+                return;
+            }
+        }
+
+        if (config->signer.step == esp_signer_jwt_generation_step_begin && (millis() - config->internal.esp_signer_last_jwt_begin_step_millis > config->timeout.tokenGenerationBeginStep || config->internal.esp_signer_last_jwt_begin_step_millis == 0))
+        {
+            config->internal.esp_signer_last_jwt_begin_step_millis = millis();
+            ut->syncClock(config->time_zone);
+
+            if (config->internal.esp_signer_clock_rdy)
                 config->signer.step = esp_signer_jwt_generation_step_encode_header_payload;
         }
         else if (config->signer.step == esp_signer_jwt_generation_step_encode_header_payload)
@@ -314,95 +324,15 @@ void ESP_Signer::tokenProcessingTask()
         else if (config->signer.step == esp_signer_jwt_generation_step_exchange)
         {
 
-            if (requestTokens())
-            {
-                config->signer.attempts = 0;
-                _token_processing_task_enable = false;
-                config->signer.step = esp_signer_jwt_generation_step_begin;
-                ret = true;
-            }
-            else
-            {
-                config->signer.step = esp_signer_jwt_generation_step_begin;
+            requestTokens();
 
-                if (config->signer.attempts < config->max_token_generation_retry)
-                    config->signer.attempts++;
-                else
-                {
-                    config->signer.tokens.error.message.clear();
-                    setTokenError(ESP_SIGNER_ERROR_TOKEN_EXCHANGE_MAX_RETRY_REACHED);
-                    config->_int.esp_signer_last_jwt_generation_error_cb_millis = 0;
-                    sendTokenStatusCB();
-                    config->signer.attempts = 0;
-                    config->signer.step = esp_signer_jwt_generation_step_begin;
-                    ret = true;
-                }
-            }
+            _token_processing_task_enable = false;
+            config->signer.step = esp_signer_jwt_generation_step_begin;
+            ret = true;
         }
     }
 
     config->signer.tokenTaskRunning = false;
-
-#elif defined(ESP8266)
-
-    if (_token_processing_task_enable && config->signer.tokens.status != esp_signer_token_status_ready)
-    {
-
-        if (config->signer.step == esp_signer_jwt_generation_step_begin && (millis() - config->_int.esp_signer_last_jwt_begin_step_millis > 200 || config->_int.esp_signer_last_jwt_begin_step_millis == 0))
-        {
-            config->_int.esp_signer_last_jwt_begin_step_millis = millis();
-            config->signer.tokenTaskRunning = true;
-            ut->setClock(config->time_zone);
-            time_t now = time(nullptr);
-            config->_int.esp_signer_clock_rdy = now > ut->default_ts;
-
-            if (config->_int.esp_signer_clock_rdy)
-                config->signer.step = esp_signer_jwt_generation_step_encode_header_payload;
-        }
-        else if (config->signer.step == esp_signer_jwt_generation_step_encode_header_payload)
-        {
-            if (createJWT())
-                config->signer.step = esp_signer_jwt_generation_step_sign;
-        }
-        else if (config->signer.step == esp_signer_jwt_generation_step_sign)
-        {
-            if (createJWT())
-                config->signer.step = esp_signer_jwt_generation_step_exchange;
-        }
-        else if (config->signer.step == esp_signer_jwt_generation_step_exchange)
-        {
-
-            if (requestTokens())
-            {
-                config->signer.tokenTaskRunning = false;
-                _token_processing_task_enable = false;
-                config->signer.attempts = 0;
-                config->signer.step = esp_signer_jwt_generation_step_begin;
-                return;
-            }
-            else
-            {
-                if (config->signer.attempts < config->max_token_generation_retry)
-                    config->signer.attempts++;
-                else
-                {
-                    config->signer.tokens.error.message.clear();
-                    setTokenError(ESP_SIGNER_ERROR_TOKEN_EXCHANGE_MAX_RETRY_REACHED);
-                    config->_int.esp_signer_last_jwt_generation_error_cb_millis = 0;
-                    sendTokenStatusCB();
-                    config->signer.tokenTaskRunning = false;
-                    _token_processing_task_enable = false;
-                    config->signer.attempts = 0;
-                    config->signer.step = esp_signer_jwt_generation_step_begin;
-                    return;
-                }
-            }
-        }
-
-        set_scheduled_callback(std::bind(&ESP_Signer::tokenProcessingTask, this));
-    }
-
-#endif
 }
 
 void ESP_Signer::setTokenError(int code)
@@ -419,7 +349,7 @@ void ESP_Signer::setTokenError(int code)
 
     if (config->signer.tokens.error.message.length() == 0)
     {
-        config->_int.esp_signer_processing = false;
+        config->internal.esp_signer_processing = false;
         switch (code)
         {
         case ESP_SIGNER_ERROR_TOKEN_SET_TIME:
@@ -452,6 +382,9 @@ void ESP_Signer::setTokenError(int code)
         case ESP_SIGNER_ERROR_HTTP_CODE_REQUEST_TIMEOUT:
             config->signer.tokens.error.message += esp_signer_pgm_str_30;
             break;
+        case ESP_SIGNER_ERROR_NTP_SYNC_TIMED_OUT:
+            config->signer.tokens.error.message += esp_signer_pgm_str_116;
+            break;
 
         default:
             break;
@@ -463,10 +396,10 @@ bool ESP_Signer::sdBegin(int8_t ss, int8_t sck, int8_t miso, int8_t mosi)
 {
     if (config)
     {
-        config->_int.sd_config.sck = sck;
-        config->_int.sd_config.miso = miso;
-        config->_int.sd_config.mosi = mosi;
-        config->_int.sd_config.ss = ss;
+        config->internal.sd_config.sck = sck;
+        config->internal.sd_config.miso = miso;
+        config->internal.sd_config.mosi = mosi;
+        config->internal.sd_config.ss = ss;
     }
 #if defined(ESP32)
     if (ss > -1)
@@ -491,9 +424,9 @@ bool ESP_Signer::sdMMCBegin(const char *mountpoint, bool mode1bit, bool format_i
 #if defined(CARD_TYPE_SD_MMC)
     if (config)
     {
-        config->_int.sd_config.sd_mmc_mountpoint = mountpoint;
-        config->_int.sd_config.sd_mmc_mode1bit = mode1bit;
-        config->_int.sd_config.sd_mmc_format_if_mount_failed = format_if_mount_failed;
+        config->internal.sd_config.sd_mmc_mountpoint = mountpoint;
+        config->internal.sd_config.sd_mmc_mode1bit = mode1bit;
+        config->internal.sd_config.sd_mmc_format_if_mount_failed = format_if_mount_failed;
     }
     return SD_FS.begin(mountpoint, mode1bit, format_if_mount_failed);
 #endif
@@ -510,7 +443,7 @@ bool ESP_Signer::handleSignerError(int code, int httpCode)
     case 1:
         config->signer.tokens.error.message.clear();
         setTokenError(ESP_SIGNER_ERROR_TCP_ERROR_NOT_CONNECTED);
-        config->_int.esp_signer_last_jwt_generation_error_cb_millis = 0;
+        config->internal.esp_signer_last_jwt_generation_error_cb_millis = 0;
         sendTokenStatusCB();
         break;
     case 2:
@@ -520,7 +453,7 @@ bool ESP_Signer::handleSignerError(int code, int httpCode)
 
         config->signer.tokens.error.message.clear();
         setTokenError(ESP_SIGNER_ERROR_TCP_ERROR_CONNECTION_LOST);
-        config->_int.esp_signer_last_jwt_generation_error_cb_millis = 0;
+        config->internal.esp_signer_last_jwt_generation_error_cb_millis = 0;
         sendTokenStatusCB();
         break;
     case 3:
@@ -538,7 +471,7 @@ bool ESP_Signer::handleSignerError(int code, int httpCode)
             errorToString(httpCode, config->signer.tokens.error.message);
             setTokenError(httpCode);
         }
-        config->_int.esp_signer_last_jwt_generation_error_cb_millis = 0;
+        config->internal.esp_signer_last_jwt_generation_error_cb_millis = 0;
         sendTokenStatusCB();
 
         break;
@@ -558,7 +491,7 @@ bool ESP_Signer::handleSignerError(int code, int httpCode)
     config->signer.json = NULL;
     config->signer.result = NULL;
 
-    config->_int.esp_signer_processing = false;
+    config->internal.esp_signer_processing = false;
 
     if (code > 0 && code < 4)
     {
@@ -570,9 +503,8 @@ bool ESP_Signer::handleSignerError(int code, int httpCode)
     {
         config->signer.tokens.error.message.clear();
         config->signer.tokens.status = esp_signer_token_status_ready;
-        config->signer.attempts = 0;
         config->signer.step = esp_signer_jwt_generation_step_begin;
-        config->_int.esp_signer_last_jwt_generation_error_cb_millis = 0;
+        config->internal.esp_signer_last_jwt_generation_error_cb_millis = 0;
         if (code == 0)
             sendTokenStatusCB();
         return true;
@@ -589,9 +521,9 @@ void ESP_Signer::sendTokenStatusCB()
 
     if (config->token_status_callback)
     {
-        if (millis() - config->_int.esp_signer_last_jwt_generation_error_cb_millis > config->timeout.tokenGenerationError || config->_int.esp_signer_last_jwt_generation_error_cb_millis == 0)
+        if (millis() - config->internal.esp_signer_last_jwt_generation_error_cb_millis > config->timeout.tokenGenerationError || config->internal.esp_signer_last_jwt_generation_error_cb_millis == 0)
         {
-            config->_int.esp_signer_last_jwt_generation_error_cb_millis = millis();
+            config->internal.esp_signer_last_jwt_generation_error_cb_millis = millis();
             config->token_status_callback(tokenInfo);
         }
     }
@@ -608,7 +540,7 @@ bool ESP_Signer::parseJsonResponse(PGM_P key_path)
 
 bool ESP_Signer::handleTokenResponse(int &httpCode)
 {
-    if (config->_int.esp_signer_reconnect_wifi)
+    if (config->internal.esp_signer_reconnect_wifi)
         ut->reconnect(0);
 
     if (WiFi.status() != WL_CONNECTED && !ut->ethLinkUp(&config->spi_ethernet_module))
@@ -652,7 +584,7 @@ bool ESP_Signer::handleTokenResponse(int &httpCode)
             {
                 ut->idle();
 
-                if (config->_int.esp_signer_reconnect_wifi)
+                if (config->internal.esp_signer_reconnect_wifi)
                     ut->reconnect(0);
 
                 if (WiFi.status() != WL_CONNECTED && !ut->ethLinkUp(&config->spi_ethernet_module))
@@ -769,7 +701,7 @@ bool ESP_Signer::createJWT()
         config->signer.tokens.status = esp_signer_token_status_on_signing;
         config->signer.tokens.error.code = 0;
         config->signer.tokens.error.message.clear();
-        config->_int.esp_signer_last_jwt_generation_error_cb_millis = 0;
+        config->internal.esp_signer_last_jwt_generation_error_cb_millis = 0;
         sendTokenStatusCB();
 
         config->signer.json = new FirebaseJson();
@@ -1049,7 +981,7 @@ bool ESP_Signer::createJWT()
 bool ESP_Signer::requestTokens()
 {
 
-    if (config->_int.esp_signer_reconnect_wifi)
+    if (config->internal.esp_signer_reconnect_wifi)
         ut->reconnect(0);
 
     if (WiFi.status() != WL_CONNECTED && !ut->ethLinkUp(&config->spi_ethernet_module))
@@ -1057,14 +989,14 @@ bool ESP_Signer::requestTokens()
 
     ut->idle();
 
-    if (config->signer.tokens.status == esp_signer_token_status_on_request || config->signer.tokens.status == esp_signer_token_status_on_refresh || time(nullptr) < ut->default_ts || config->_int.esp_signer_processing)
+    if (config->signer.tokens.status == esp_signer_token_status_on_request || config->signer.tokens.status == esp_signer_token_status_on_refresh || time(nullptr) < ESP_DEFAULT_TS || config->internal.esp_signer_processing)
         return false;
 
     config->signer.tokens.status = esp_signer_token_status_on_request;
-    config->_int.esp_signer_processing = true;
+    config->internal.esp_signer_processing = true;
     config->signer.tokens.error.code = 0;
     config->signer.tokens.error.message.clear();
-    config->_int.esp_signer_last_jwt_generation_error_cb_millis = 0;
+    config->internal.esp_signer_last_jwt_generation_error_cb_millis = 0;
     sendTokenStatusCB();
 
     config->signer.wcs = new ESP_SIGNER_TCP_Client();
@@ -1166,7 +1098,7 @@ bool ESP_Signer::requestTokens()
         tokenInfo.status = config->signer.tokens.status;
         tokenInfo.type = config->signer.tokens.token_type;
         tokenInfo.error = config->signer.tokens.error;
-        config->_int.esp_signer_last_jwt_generation_error_cb_millis = 0;
+        config->internal.esp_signer_last_jwt_generation_error_cb_millis = 0;
         if (error.code != 0)
             sendTokenStatusCB();
 
@@ -1222,7 +1154,7 @@ void ESP_Signer::checkToken()
         config->signer.tokens.status = esp_signer_token_status_uninitialized;
         config->signer.tokens.error.code = 0;
         config->signer.tokens.error.message.clear();
-        config->_int.esp_signer_last_jwt_generation_error_cb_millis = 0;
+        config->internal.esp_signer_last_jwt_generation_error_cb_millis = 0;
         _token_processing_task_end_request = false;
         _token_processing_task_enable = false;
     }

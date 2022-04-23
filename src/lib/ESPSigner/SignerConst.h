@@ -1,6 +1,6 @@
 
 /**
- * Created April 18, 2022
+ * Created April 23, 2022
  *
  *
  * The MIT License (MIT)
@@ -179,7 +179,6 @@ struct esp_signer_service_account_t
 struct esp_signer_token_signer_resources_t
 {
     int step = 0;
-    int attempts = 0;
     bool tokenTaskRunning = false;
     unsigned long lastReqMillis = 0;
     unsigned long preRefreshSeconds = 60;
@@ -223,11 +222,13 @@ struct esp_signer_cfg_int_t
     unsigned long esp_signer_last_jwt_begin_step_millis = 0;
     uint16_t esp_signer_reconnect_tmo = WIFI_RECONNECT_TIMEOUT;
     bool esp_signer_clock_rdy = false;
-    bool esp_signer_clock_init = false;
+    bool esp_signer_clock_synched = false;
     float esp_signer_gmt_offset = 0;
     const char *esp_signer_caCert = nullptr;
     bool esp_signer_processing = false;
     unsigned long esp_signer_last_jwt_generation_error_cb_millis = 0;
+    unsigned long esp_signer_last_time_sync_millis = 0;
+    unsigned long esp_signer_last_ntp_sync_timeout_millis = 0;
 
 #if defined(ESP32)
     TaskHandle_t token_processing_task_handle = NULL;
@@ -251,6 +252,8 @@ struct esp_signer_client_timeout_t
     uint16_t tokenGenerationBeginStep = 300;
 
     uint16_t tokenGenerationError = 5 * 1000;
+
+    uint16_t ntpServerRequest = 15 * 1000;
 };
 
 typedef struct token_info_t
@@ -268,7 +271,7 @@ struct esp_signer_cfg_t
     float time_zone = 0;
     struct esp_signer_auth_cert_t cert;
     struct esp_signer_token_signer_resources_t signer;
-    struct esp_signer_cfg_int_t _int;
+    struct esp_signer_cfg_int_t internal;
     TokenStatusCallback token_status_callback = NULL;
     int8_t max_token_generation_retry = MAX_EXCHANGE_TOKEN_ATTEMPTS;
     SPI_ETH_Module spi_ethernet_module;
@@ -414,6 +417,7 @@ static const char esp_signer_pgm_str_112[] PROGMEM = "ready";
 static const char esp_signer_pgm_str_113[] PROGMEM = "error";
 static const char esp_signer_pgm_str_114[] PROGMEM = "code: ";
 static const char esp_signer_pgm_str_115[] PROGMEM = ", message: ";
+static const char esp_signer_pgm_str_116[] PROGMEM = "NTP server time synching failed";
 
 static const unsigned char esp_signer_base64_table[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static const char esp_signer_boundary_table[] PROGMEM = "=_abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";

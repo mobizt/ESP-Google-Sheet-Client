@@ -1,7 +1,7 @@
 # Arduino Google Sheet Client Library for ESP8266 and ESP32
 
 
-Arduino Google Sheet Client Library for ESP8266 and ESP32 v1.0.3.
+Arduino Google Sheet Client Library for ESP8266 and ESP32 v1.0.4.
 
 This library allows devices to authenticate and communicate with Google Sheet APIs using the Service Account.
 
@@ -15,13 +15,6 @@ You can create, edit and deploy the Apps Script code via extension of spreadshee
 
 
 Spreadsheet created or owned by you, needed to share the access with Service Account's client email then library can read, and edit except for delete the user's spreadsheet due to permission denied.
-
-
-## Important Note
-
-The connection to Google Sheet API endpoint takes time and the time from sending request to the complete response received can be as much as 3 seconds.
-
-The speed is not the library or device issue unless the server issue.
 
 
 ## Dependencies

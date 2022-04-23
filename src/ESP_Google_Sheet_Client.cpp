@@ -1,9 +1,9 @@
 /**
- * Google Sheet Client, ESP_Google_Sheet_Client.cpp v1.0.1
+ * Google Sheet Client, ESP_Google_Sheet_Client.cpp v1.0.4
  * 
  * This library supports Espressif ESP8266 and ESP32 MCUs
  * 
- * Created April 18, 2022
+ * Created April 23, 2022
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -57,7 +57,7 @@ void GSheetClass::auth(const char *client_email, const char *project_id, const c
     config.service_account.data.private_key = private_key;
     config.signer.expiredSeconds = 3600;
     config.signer.preRefreshSeconds = 60;
-    config._int.esp_signer_reconnect_wifi = WiFi.getAutoReconnect();
+    config.internal.esp_signer_reconnect_wifi = WiFi.getAutoReconnect();
     config.signer.tokens.scope = (const char *)FPSTR("https://www.googleapis.com/auth/drive.metadata,https://www.googleapis.com/auth/drive.appdata,https://www.googleapis.com/auth/spreadsheets,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/drive.file");
     this->begin(&config);
 }
@@ -69,25 +69,20 @@ void GSheetClass::setTokenCallback(TokenStatusCallback callback)
 
 bool GSheetClass::checkToken()
 {
-    if (setClock(0))
-    {
-        return this->tokenReady();
-    }
-
-    return false;
+    return this->tokenReady();
 }
 
 bool GSheetClass::setClock(float gmtOffset)
 {
 
-    if (time(nullptr) > ESP_DEFAULT_TS && gmtOffset == config._int.esp_signer_gmt_offset)
+    if (time(nullptr) > ESP_DEFAULT_TS && gmtOffset == config.internal.esp_signer_gmt_offset)
         return true;
 
     time_t now = time(nullptr);
 
-    config._int.esp_signer_clock_rdy = now > ESP_DEFAULT_TS;
+    config.internal.esp_signer_clock_rdy = now > ESP_DEFAULT_TS;
 
-    if (!config._int.esp_signer_clock_rdy || gmtOffset != config._int.esp_signer_gmt_offset)
+    if (!config.internal.esp_signer_clock_rdy || gmtOffset != config.internal.esp_signer_gmt_offset)
     {
         configTime(gmtOffset * 3600, 0, "pool.ntp.org", "time.nist.gov");
 
@@ -102,11 +97,11 @@ bool GSheetClass::setClock(float gmtOffset)
         }
     }
 
-    config._int.esp_signer_clock_rdy = now > ESP_DEFAULT_TS;
-    if (config._int.esp_signer_clock_rdy)
-        config._int.esp_signer_gmt_offset = gmtOffset;
+    config.internal.esp_signer_clock_rdy = now > ESP_DEFAULT_TS;
+    if (config.internal.esp_signer_clock_rdy)
+        config.internal.esp_signer_gmt_offset = gmtOffset;
 
-    return config._int.esp_signer_clock_rdy;
+    return config.internal.esp_signer_clock_rdy;
 }
 
 void GSheetClass::beginRequest(FirebaseJson *response, MB_String &req, host_type_t host_type)
@@ -189,30 +184,25 @@ void GSheetClass::setSecure()
     if (config.signer.wcs->_certType == -1 || cert_updated)
     {
 
-        if (!config._int.esp_signer_clock_rdy && (cert_addr > 0))
+        if (!config.internal.esp_signer_clock_rdy && (cert_addr > 0))
         {
 
 #if defined(ESP8266)
-            int retry = 0;
-            while (!config._int.esp_signer_clock_rdy && retry < 5)
-            {
                 setClock(0);
-                retry++;
-            }
 #endif
         }
 
-        config.signer.wcs->_clockReady = config._int.esp_signer_clock_rdy;
+        config.signer.wcs->_clockReady = config.internal.esp_signer_clock_rdy;
 
         if (certFile.length() > 0)
         {
 
 #if defined(ESP8266)
-            if (config._int.sd_config.ss == -1)
-                config._int.sd_config.ss = SD_CS_PIN;
+            if (config.internal.sd_config.ss == -1)
+                config.internal.sd_config.ss = SD_CS_PIN;
 #endif
             int type = certFileStorageType == esP_google_sheet_file_storage_type_flash ? 1 : 2;
-            config.signer.wcs->setCACertFile(certFile.c_str(), type, config._int.sd_config);
+            config.signer.wcs->setCACertFile(certFile.c_str(), type, config.internal.sd_config);
         }else
         {
             if (cert_addr > 0)

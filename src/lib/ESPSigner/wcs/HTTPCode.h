@@ -1,5 +1,5 @@
 /**
- * Created April 18, 2022
+ * Created April 23, 2022
  * 
  * This work is a part of ESP Signer library
  * Copyright (c) 2022, K. Suwatchai (Mobizt)
@@ -55,7 +55,7 @@
 #define ESP_SIGNER_ERROR_TOKEN_EXCHANGE -23
 #define ESP_SIGNER_ERROR_TOKEN_EXCHANGE_MAX_RETRY_REACHED -24
 #define ESP_SIGNER_ERROR_TOKEN_NOT_READY -25
-
+#define ESP_SIGNER_ERROR_NTP_SYNC_TIMED_OUT -26
 
 #define ESP_SIGNER_ERROR_HTTP_CODE_UNDEFINED -1000
 

@@ -1,8 +1,8 @@
 /**
- * Util class, SignerUtils.h version 1.0.4
+ * Util class, SignerUtils.h version 1.0.5
  *
  *
- * Created April 18, 2022
+ * Created April 23, 2022
  *
  * This work is a part of ESP Signer library
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -39,7 +39,6 @@ class SignerUtils
 {
 
 public:
-    long default_ts = ESP_DEFAULT_TS;
     uint16_t ntpTimeout = 20;
     esp_signer_callback_function_t _callback_function = nullptr;
     SignerConfig *config = nullptr;
@@ -890,12 +889,12 @@ public:
         if (!config)
             return;
 
-        if (config->_int.esp_signer_file)
-            config->_int.esp_signer_file.close();
+        if (config->internal.esp_signer_file)
+            config->internal.esp_signer_file.close();
         if (sd)
         {
-            config->_int.esp_signer_sd_used = false;
-            config->_int.esp_signer_sd_rdy = false;
+            config->internal.esp_signer_sd_used = false;
+            config->internal.esp_signer_sd_rdy = false;
 #if defined SD_FS
             SD_FS.end();
 #endif
@@ -1250,39 +1249,39 @@ public:
         return ret;
     }
 
-    bool setClock(float gmtOffset)
+    bool syncClock(float gmtOffset)
     {
         if (!config)
             return false;
 
-        if (time(nullptr) > default_ts && gmtOffset == config->_int.esp_signer_gmt_offset)
-            return true;
-
-        if (config->_int.esp_signer_reconnect_wifi)
-            reconnect(0);
-
         time_t now = time(nullptr);
 
-        config->_int.esp_signer_clock_rdy = now > default_ts;
+        config->internal.esp_signer_clock_rdy = now > ESP_DEFAULT_TS;
 
-        if (!config->_int.esp_signer_clock_rdy || gmtOffset != config->_int.esp_signer_gmt_offset)
+        if (config->internal.esp_signer_clock_rdy && gmtOffset == config->internal.esp_signer_gmt_offset)
+            return true;
+
+        if (config->internal.esp_signer_reconnect_wifi)
+            reconnect(0);
+
+        if (!config->internal.esp_signer_clock_rdy || gmtOffset != config->internal.esp_signer_gmt_offset)
         {
-            if (gmtOffset != config->_int.esp_signer_gmt_offset)
-                config->_int.esp_signer_clock_init = false;
+            if (gmtOffset != config->internal.esp_signer_gmt_offset)
+                config->internal.esp_signer_clock_synched = false;
 
-            if (!config->_int.esp_signer_clock_init)
+            if (!config->internal.esp_signer_clock_synched)
                 configTime(gmtOffset * 3600, 0, "pool.ntp.org", "time.nist.gov");
 
-            config->_int.esp_signer_clock_init = true;
+            config->internal.esp_signer_clock_synched = true;
 
             now = time(nullptr);
         }
 
-        config->_int.esp_signer_clock_rdy = now > default_ts;
-        if (config->_int.esp_signer_clock_rdy)
-            config->_int.esp_signer_gmt_offset = gmtOffset;
+        config->internal.esp_signer_clock_rdy = now > ESP_DEFAULT_TS;
+        if (config->internal.esp_signer_clock_rdy)
+            config->internal.esp_signer_gmt_offset = gmtOffset;
 
-        return config->_int.esp_signer_clock_rdy;
+        return config->internal.esp_signer_clock_rdy;
     }
 
     void encodeBase64Url(char *encoded, unsigned char *string, size_t len)
@@ -1489,10 +1488,10 @@ public:
 
         if (config)
         {
-            config->_int.sd_config.sck = sck;
-            config->_int.sd_config.miso = miso;
-            config->_int.sd_config.mosi = mosi;
-            config->_int.sd_config.ss = ss;
+            config->internal.sd_config.sck = sck;
+            config->internal.sd_config.miso = miso;
+            config->internal.sd_config.mosi = mosi;
+            config->internal.sd_config.ss = ss;
         }
 #if defined(ESP32)
         if (ss > -1)
@@ -1523,9 +1522,9 @@ public:
 
         if (config)
         {
-            config->_int.sd_config.sd_mmc_mountpoint = mountpoint;
-            config->_int.sd_config.sd_mmc_mode1bit = mode1bit;
-            config->_int.sd_config.sd_mmc_format_if_mount_failed = format_if_mount_failed;
+            config->internal.sd_config.sd_mmc_mountpoint = mountpoint;
+            config->internal.sd_config.sd_mmc_mode1bit = mode1bit;
+            config->internal.sd_config.sd_mmc_format_if_mount_failed = format_if_mount_failed;
         }
         return SD_FS.begin(mountpoint, mode1bit, format_if_mount_failed);
     }
@@ -1539,13 +1538,13 @@ public:
             return false;
 #if defined(ESP32)
         if (FORMAT_FLASH == 1)
-            config->_int.esp_signer_flash_rdy = FLASH_FS.begin(true);
+            config->internal.esp_signer_flash_rdy = FLASH_FS.begin(true);
         else
-            config->_int.esp_signer_flash_rdy = FLASH_FS.begin();
+            config->internal.esp_signer_flash_rdy = FLASH_FS.begin();
 #elif defined(ESP8266)
-        config->_int.esp_signer_flash_rdy = FLASH_FS.begin();
+        config->internal.esp_signer_flash_rdy = FLASH_FS.begin();
 #endif
-        return config->_int.esp_signer_flash_rdy;
+        return config->internal.esp_signer_flash_rdy;
 #else
         return false;
 #endif
@@ -1559,12 +1558,12 @@ public:
 
         MB_String filepath = "/sdtest01.txt";
 #if defined(CARD_TYPE_SD)
-        if (!sdBegin(config->_int.sd_config.ss, config->_int.sd_config.sck, config->_int.sd_config.miso, config->_int.sd_config.mosi))
+        if (!sdBegin(config->internal.sd_config.ss, config->internal.sd_config.sck, config->internal.sd_config.miso, config->internal.sd_config.mosi))
             return false;
 #endif
 #if defined(ESP32)
 #if defined(CARD_TYPE_SD_MMC)
-        if (!sdBegin(config->_int.sd_config.sd_mmc_mountpoint, config->_int.sd_config.sd_mmc_mode1bit, config->_int.sd_config.sd_mmc_format_if_mount_failed))
+        if (!sdBegin(config->internal.sd_config.sd_mmc_mountpoint, config->internal.sd_config.sd_mmc_mode1bit, config->internal.sd_config.sd_mmc_format_if_mount_failed))
             return false;
 #endif
 #endif
@@ -1598,7 +1597,7 @@ public:
 
         MB_String().swap(filepath);
 
-        config->_int.esp_signer_sd_rdy = true;
+        config->internal.esp_signer_sd_rdy = true;
 
         return true;
 #else
@@ -1620,7 +1619,7 @@ public:
 #if defined(ESP32)
 
         unsigned long wTime = millis();
-        while (config->_int.esp_signer_processing)
+        while (config->internal.esp_signer_processing)
         {
             if (millis() - wTime > 3000)
             {
@@ -1680,14 +1679,14 @@ public:
 
             if (config)
             {
-                if (config->_int.esp_signer_reconnect_wifi)
+                if (config->internal.esp_signer_reconnect_wifi)
                 {
                     if (config->timeout.wifiReconnect < 10000 || config->timeout.wifiReconnect > 5 * 60 * 1000)
                         config->timeout.wifiReconnect = 10000;
-                    if (millis() - config->_int.esp_signer_last_reconnect_millis > config->timeout.wifiReconnect)
+                    if (millis() - config->internal.esp_signer_last_reconnect_millis > config->timeout.wifiReconnect)
                     {
                         WiFi.reconnect();
-                        config->_int.esp_signer_last_reconnect_millis = millis();
+                        config->internal.esp_signer_last_reconnect_millis = millis();
                     }
                 }
             }

@@ -1,9 +1,9 @@
 /**
- * Google Sheet Client, ESP_Google_Sheet_Client.cpp v1.0.4
+ * Google Sheet Client, ESP_Google_Sheet_Client.cpp v1.1.0
  * 
  * This library supports Espressif ESP8266 and ESP32 MCUs
  * 
- * Created April 23, 2022
+ * Created May 7, 2022
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -224,6 +224,7 @@ bool GSheetClass::processRequest(FirebaseJson *response, MB_String &req, int &ht
     config.signer.result = new FirebaseJsonData();
     int ret = config.signer.wcs->send(req.c_str());
     req.clear();
+    config.signer.reuseSession = true;
 
     if (ret == 0)
     {
@@ -238,8 +239,12 @@ bool GSheetClass::processRequest(FirebaseJson *response, MB_String &req, int &ht
         }
     }
 
+    Serial.println(ESP.getFreeHeap());
+
     delete config.signer.json;
     delete config.signer.result;
+
+    config.signer.reuseSession = false;
 
     return ret;
 }

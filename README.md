@@ -1,7 +1,7 @@
 # Arduino Google Sheet Client Library for ESP8266 and ESP32
 
 
-Arduino Google Sheet Client Library for ESP8266 and ESP32 v1.0.4.
+Arduino Google Sheet Client Library for ESP8266 and ESP32.
 
 This library allows devices to authenticate and communicate with Google Sheet APIs using the Service Account.
 

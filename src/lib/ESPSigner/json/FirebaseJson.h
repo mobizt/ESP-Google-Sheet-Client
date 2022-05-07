@@ -1,9 +1,9 @@
 /*
- * FirebaseJson, version 2.6.17
+ * FirebaseJson, version 3.0.0
  *
  * The Easiest Arduino library to parse, create and edit JSON object using a relative path.
  *
- * Created April 19, 2022
+ * Created May 6, 2022
  *
  * Features
  * - Using path to access node element in search style e.g. json.get(result,"a/b/c")
@@ -1947,10 +1947,20 @@ public:
      * @param prettify The text indentation and new line serialization option.
      */
     template <typename T>
-    bool toString(T &out, bool prettify = false) { return toStringHandler(out, prettify); }
-
-    template <typename T>
     bool toString(T *ptr, bool prettify = false) { return toStringPtrHandler(ptr, prettify); }
+
+    bool toString(Stream &out, bool prettify = false) { return toStringHandler(out, prettify); }
+
+    bool toString(String &out, bool prettify = false) { return toStringHandler(out, prettify); }
+
+    bool toString(MB_String &out, bool prettify = false) { return toStringHandler(out, prettify); }
+
+#if !defined(__AVR__)
+    bool toString(std::string &out, bool prettify = false)
+    {
+        return toStringHandler(out, prettify);
+    }
+#endif
 
     /**
      * Get raw JSON Array
@@ -2411,6 +2421,7 @@ public:
     {
         uint32_t addr = 0;
         dataHandler(getStr(key, addr), value, fb_json_func_type_add);
+        delAddr(addr);
         return *this;
     }
 
@@ -2419,6 +2430,7 @@ public:
     {
         uint32_t addr = 0;
         dataHandler(getStr(key, addr), value, fb_json_func_type_add);
+        delAddr(addr);
         return *this;
     }
 
@@ -2427,6 +2439,7 @@ public:
     {
         uint32_t addr = 0;
         dataHandler(getStr(key, addr), value, fb_json_func_type_add);
+        delAddr(addr);
         return *this;
     }
 
@@ -2437,13 +2450,21 @@ public:
      * @param prettify The text indentation and new line serialization option.
      */
 
-    bool toString(Stream &out, bool prettify = false) { return toStringHandler(out, prettify); }
-
     template <typename T>
     bool toString(T *ptr, bool prettify = false) { return toStringPtrHandler(ptr, prettify); }
 
-    template <typename T>
-    bool toString(T &out, bool prettify = false) { return toStringHandler(out, prettify); }
+    bool toString(Stream &out, bool prettify = false) { return toStringHandler(out, prettify); }
+
+    bool toString(String &out, bool prettify = false) { return toStringHandler(out, prettify); }
+
+    bool toString(MB_String &out, bool prettify = false) { return toStringHandler(out, prettify); }
+
+#if !defined(__AVR__)
+    bool toString(std::string &out, bool prettify = false)
+    {
+        return toStringHandler(out, prettify);
+    }
+#endif
 
     /**
      * Get the value from the specified node path in FirebaseJson object.

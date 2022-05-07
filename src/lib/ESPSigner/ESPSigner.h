@@ -151,7 +151,8 @@ protected:
     SignerConfig *config = nullptr;
     esp_signer_callback_function_t _cb = nullptr;
     struct token_info_t tokenInfo;
-    
+   
+
     bool authenticated = false;
     bool _token_processing_task_enable = false;
     bool _token_processing_task_end_request = false;

@@ -1,5 +1,5 @@
 /**
- * Google's OAuth2.0 Access token Generation class, Signer.h version 1.1.6
+ * Google's OAuth2.0 Access token Generation class, Signer.h version 1.2.0
  * 
  * This library used RS256 for signing algorithm.
  * 
@@ -7,7 +7,7 @@
  * 
  * This library supports Espressif ESP8266 and ESP32
  * 
- * Created April 23, 2022
+ * Created November 17, 2022
  * 
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -168,7 +168,7 @@ protected:
     void setTokenError(int code);
     bool handleSignerError(int code, int httpCode = 0);
     bool parseJsonResponse(PGM_P key_path);
-    bool handleTokenResponse(int &httpCode);
+    bool handleServerResponse(int &httpCode, MB_String &payload);
     void tokenProcessingTask();
     bool createJWT();
     bool requestTokens();

@@ -1,16 +1,16 @@
 
 /**
  * Created by K. Suwatchai (Mobizt)
- * 
+ *
  * Email: suwatchai@outlook.com
- * 
+ *
  * Github: https://github.com/mobizt
- * 
+ *
  * Copyright (c) 2021 mobizt
  *
-*/
+ */
 
-//This example shows how to read the spreadsheet's values from ranges.
+// This example shows how to read the spreadsheet's values from ranges.
 
 #include <Arduino.h>
 #if defined(ESP8266)
@@ -23,14 +23,14 @@
 #define WIFI_SSID "WIFI_AP"
 #define WIFI_PASSWORD "WIFI_PASSWORD"
 
-//For how to create Service Account and how to use the library, go to https://github.com/mobizt/ESP-Google-Sheet-Client
+// For how to create Service Account and how to use the library, go to https://github.com/mobizt/ESP-Google-Sheet-Client
 
 #define PROJECT_ID "PROJECT_ID"
 
-//Service Account's client email
+// Service Account's client email
 #define CLIENT_EMAIL "CLIENT_EMAIL"
 
-//Service Account's private key
+// Service Account's private key
 const char PRIVATE_KEY[] PROGMEM = "-----BEGIN PRIVATE KEY-----XXXXXXXXXXXX-----END PRIVATE KEY-----\n";
 
 /**
@@ -94,33 +94,35 @@ void setup()
     Serial.println(WiFi.localIP());
     Serial.println();
 
-    //GSheet.setCert(rootCACert); // or GSheet.setCertFile("<.pem cert file name>", esP_google_sheet_file_storage_type_flash /* or esP_google_sheet_file_storage_type_sd */);
+    // GSheet.setCert(rootCACert); // or GSheet.setCertFile("<.pem cert file name>", esP_google_sheet_file_storage_type_flash /* or esP_google_sheet_file_storage_type_sd */);
 
-    //Set the callback for Google API access token generation status (for debug only)
+    // Set the callback for Google API access token generation status (for debug only)
     GSheet.setTokenCallback(tokenStatusCallback);
 
-    //Begin the access token generation for Google API authentication
+    // Begin the access token generation for Google API authentication
     GSheet.begin(CLIENT_EMAIL, PROJECT_ID, PRIVATE_KEY);
 }
 
 void loop()
 {
-    //Call ready() repeatedly in loop for authentication checking and processing
+    // Call ready() repeatedly in loop for authentication checking and processing
     bool ready = GSheet.ready();
 
     if (ready && !taskComplete)
     {
-        //For basic FirebaseJson usage example, see examples/FirebaseJson/Create_Edit_Parse/Create_Edit_Parse.ino
+        // For basic FirebaseJson usage example, see examples/FirebaseJson/Create_Edit_Parse/Create_Edit_Parse.ino
 
-        //If you assign the spreadsheet id from your own spreadsheet,
-        //you need to set share access to the Service Account's CLIENT_EMAIL
+        // If you assign the spreadsheet id from your own spreadsheet,
+        // you need to set share access to the Service Account's CLIENT_EMAIL
 
         FirebaseJson response;
+        // Instead of using FirebaseJson for response, you can use String for response to the functions
+        // especially in low memory device that deserializing large JSON response may be failed as in ESP8266
 
         Serial.println("\nGet spreadsheet values from range...");
         Serial.println("---------------------------------------------------------------");
 
-        //For Google Sheet API ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/get
+        // For Google Sheet API ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/get
 
         bool success = GSheet.values.get(&response /* returned response */, "<spreadsheetId>" /* spreadsheet Id to read */, "Sheet1!A1:A3" /* range to read */);
         response.toString(Serial, true);
@@ -129,7 +131,7 @@ void loop()
         Serial.println("\nGet spreadsheet values from multiple ranges...");
         Serial.println("---------------------------------------------------------------");
 
-        //For Google Sheet API ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/batchGet
+        // For Google Sheet API ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/batchGet
 
         success = GSheet.values.batchGet(&response /* returned response */, "<spreadsheetId>" /* spreadsheet Id to read */, "Sheet1!A1:B3,Sheet1!C1:D3" /* ranges to read with comma separated */);
         response.toString(Serial, true);
@@ -148,7 +150,7 @@ void loop()
         dataFilters2.add("a1Range", "Sheet1!B1:B3");
         dataFiltersArr.add(dataFilters2);
 
-        //For Google Sheet API ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/batchGetByDataFilter
+        // For Google Sheet API ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/batchGetByDataFilter
 
         success = GSheet.values.batchGetByDataFilter(&response /* returned response */, "<spreadsheetId>" /* spreadsheet Id to read */, &dataFiltersArr /* array of data range to read  with filter */, "ROWS" /* major dimension */);
         response.toString(Serial, true);

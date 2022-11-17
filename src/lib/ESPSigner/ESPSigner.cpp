@@ -1,5 +1,5 @@
 /**
- * Google's OAuth2.0 Access token Generation class, Signer.h version 1.1.6
+ * Google's OAuth2.0 Access token Generation class, Signer.h version 1.2.0
  *
  * This library used RS256 for signing algorithm.
  *
@@ -7,7 +7,7 @@
  *
  * This library supports Espressif ESP8266 and ESP32
  *
- * Created April 23, 2022
+ * Created November 17, 2022
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -538,7 +538,7 @@ bool ESP_Signer::parseJsonResponse(PGM_P key_path)
     return config->signer.result->success;
 }
 
-bool ESP_Signer::handleTokenResponse(int &httpCode)
+bool ESP_Signer::handleServerResponse(int &httpCode, MB_String &payload)
 {
     if (config->internal.esp_signer_reconnect_wifi)
         ut->reconnect(0);
@@ -555,7 +555,7 @@ bool ESP_Signer::handleTokenResponse(int &httpCode)
     int chunkedDataState = 0;
     int chunkedDataSize = 0;
     int chunkedDataLen = 0;
-    MB_String header, payload;
+    MB_String header;
     bool isHeader = false;
     WiFiClient *stream = config->signer.wcs->stream();
     while (stream->connected() && stream->available() == 0)
@@ -684,9 +684,6 @@ bool ESP_Signer::handleTokenResponse(int &httpCode)
 
     if (payload.length() > 0 && !response.noContent)
     {
-
-        config->signer.json->setJsonData(payload.c_str());
-        payload.clear();
         return true;
     }
 
@@ -1066,8 +1063,15 @@ bool ESP_Signer::requestTokens()
     struct esp_signer_auth_token_error_t error;
 
     int httpCode = 0;
-    if (handleTokenResponse(httpCode))
+    MB_String payload;
+    if (handleServerResponse(httpCode, payload))
     {
+        if (payload.length() > 0)
+        {
+            config->signer.json->setJsonData(payload.c_str());
+            payload.clear();
+        }
+        
         config->signer.tokens.jwt.clear();
         if (parseJsonResponse(esp_signer_pgm_str_68))
         {

@@ -1,16 +1,16 @@
 
 /**
  * Created by K. Suwatchai (Mobizt)
- * 
+ *
  * Email: suwatchai@outlook.com
- * 
+ *
  * Github: https://github.com/mobizt
- * 
+ *
  * Copyright (c) 2021 mobizt
  *
-*/
+ */
 
-//This example shows how to update the spreadsheet's values.
+// This example shows how to update the spreadsheet's values.
 
 #include <Arduino.h>
 #if defined(ESP8266)
@@ -23,14 +23,14 @@
 #define WIFI_SSID "WIFI_AP"
 #define WIFI_PASSWORD "WIFI_PASSWORD"
 
-//For how to create Service Account and how to use the library, go to https://github.com/mobizt/ESP-Google-Sheet-Client 
+// For how to create Service Account and how to use the library, go to https://github.com/mobizt/ESP-Google-Sheet-Client
 
 #define PROJECT_ID "PROJECT_ID"
 
-//Service Account's client email
+// Service Account's client email
 #define CLIENT_EMAIL "CLIENT_EMAIL"
 
-//Service Account's private key
+// Service Account's private key
 const char PRIVATE_KEY[] PROGMEM = "-----BEGIN PRIVATE KEY-----XXXXXXXXXXXX-----END PRIVATE KEY-----\n";
 
 /**
@@ -94,49 +94,50 @@ void setup()
     Serial.println(WiFi.localIP());
     Serial.println();
 
-    //GSheet.setCert(rootCACert); // or GSheet.setCertFile("<.pem cert file name>", esP_google_sheet_file_storage_type_flash /* or esP_google_sheet_file_storage_type_sd */);
+    // GSheet.setCert(rootCACert); // or GSheet.setCertFile("<.pem cert file name>", esP_google_sheet_file_storage_type_flash /* or esP_google_sheet_file_storage_type_sd */);
 
-    //Set the callback for Google API access token generation status (for debug only)
+    // Set the callback for Google API access token generation status (for debug only)
     GSheet.setTokenCallback(tokenStatusCallback);
 
-    //Begin the access token generation for Google API authentication
+    // Begin the access token generation for Google API authentication
     GSheet.begin(CLIENT_EMAIL, PROJECT_ID, PRIVATE_KEY);
 }
 
 void loop()
 {
-    //Call ready() repeatedly in loop for authentication checking and processing
+    // Call ready() repeatedly in loop for authentication checking and processing
     bool ready = GSheet.ready();
 
     if (ready && !taskComplete)
     {
-        //For basic FirebaseJson usage example, see examples/FirebaseJson/Create_Edit_Parse/Create_Edit_Parse.ino
+        // For basic FirebaseJson usage example, see examples/FirebaseJson/Create_Edit_Parse/Create_Edit_Parse.ino
 
-        //If you assign the spreadsheet id from your own spreadsheet,
-        //you need to set share access to the Service Account's CLIENT_EMAIL
-
+        // If you assign the spreadsheet id from your own spreadsheet,
+        // you need to set share access to the Service Account's CLIENT_EMAIL
 
         Serial.println("\nUpdate spreadsheet values...");
         Serial.println("----------------------------------------------------------------");
 
         FirebaseJson response;
+        // Instead of using FirebaseJson for response, you can use String for response to the functions
+        // especially in low memory device that deserializing large JSON response may be failed as in ESP8266
 
         FirebaseJson valueRange;
 
         valueRange.add("range", "Sheet1!A1:B5");
         valueRange.add("majorDimension", "ROWS");
-        valueRange.set("values/[0]/[0]", "1"); //row 1/ column 1
-        valueRange.set("values/[1]/[0]", "2"); //row 2/ column 1
-        valueRange.set("values/[2]/[0]", "3"); //row 3/ column 1
-        valueRange.set("values/[3]/[0]", "4"); //row 4/ column 1
-        valueRange.set("values/[4]/[0]", "5"); //row 5/ column 1
-        
-        //With formula
-        valueRange.set("values/[0]/[1]", "=SUM(A1:A5)");     //row 1/ column 2
-        valueRange.set("values/[1]/[1]", "=COUNT(A1:A5)");   //row 2/ column 2
-        valueRange.set("values/[2]/[1]", "=AVERAGE(A1:A5)"); //row 3/ column 2
+        valueRange.set("values/[0]/[0]", "1"); // row 1/ column 1
+        valueRange.set("values/[1]/[0]", "2"); // row 2/ column 1
+        valueRange.set("values/[2]/[0]", "3"); // row 3/ column 1
+        valueRange.set("values/[3]/[0]", "4"); // row 4/ column 1
+        valueRange.set("values/[4]/[0]", "5"); // row 5/ column 1
 
-        //For Google Sheet API ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/update
+        // With formula
+        valueRange.set("values/[0]/[1]", "=SUM(A1:A5)");     // row 1/ column 2
+        valueRange.set("values/[1]/[1]", "=COUNT(A1:A5)");   // row 2/ column 2
+        valueRange.set("values/[2]/[1]", "=AVERAGE(A1:A5)"); // row 3/ column 2
+
+        // For Google Sheet API ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/update
 
         bool success = GSheet.values.update(&response /* returned response */, "<spreadsheetId>" /* spreadsheet Id to update */, "Sheet1!A1:B5" /* range to update */, &valueRange /* data to update */);
         response.toString(Serial, true);
@@ -149,39 +150,39 @@ void loop()
 
         valueRange1.add("range", "Sheet1!C1:D5");
         valueRange1.add("majorDimension", "ROWS");
-        valueRange1.set("values/[0]/[0]", "A"); //row 1/ column 3
-        valueRange1.set("values/[1]/[0]", "B"); //row 2/ column 3
-        valueRange1.set("values/[2]/[0]", "C"); //row 3/ column 3
-        valueRange1.set("values/[3]/[0]", "D"); //row 4/ column 3
-        valueRange1.set("values/[4]/[0]", "E"); //row 5/ column 3
+        valueRange1.set("values/[0]/[0]", "A"); // row 1/ column 3
+        valueRange1.set("values/[1]/[0]", "B"); // row 2/ column 3
+        valueRange1.set("values/[2]/[0]", "C"); // row 3/ column 3
+        valueRange1.set("values/[3]/[0]", "D"); // row 4/ column 3
+        valueRange1.set("values/[4]/[0]", "E"); // row 5/ column 3
 
-        valueRange1.set("values/[0]/[1]", "F"); //row 1/ column 4
-        valueRange1.set("values/[1]/[1]", "G"); //row 2/ column 4
-        valueRange1.set("values/[2]/[1]", "H"); //row 3/ column 4
-        valueRange1.set("values/[3]/[1]", "I"); //row 4/ column 4
-        valueRange1.set("values/[4]/[1]", "J"); //row 5/ column 4
+        valueRange1.set("values/[0]/[1]", "F"); // row 1/ column 4
+        valueRange1.set("values/[1]/[1]", "G"); // row 2/ column 4
+        valueRange1.set("values/[2]/[1]", "H"); // row 3/ column 4
+        valueRange1.set("values/[3]/[1]", "I"); // row 4/ column 4
+        valueRange1.set("values/[4]/[1]", "J"); // row 5/ column 4
 
         FirebaseJson valueRange2;
 
         valueRange2.add("range", "Sheet1!C6:D10");
         valueRange2.add("majorDimension", "ROWS");
-        valueRange2.set("values/[0]/[0]", "1"); //row 6/ column 3
-        valueRange2.set("values/[1]/[0]", "2"); //row 7/ column 3
-        valueRange2.set("values/[2]/[0]", "3"); //row 8/ column 3
-        valueRange2.set("values/[3]/[0]", "4"); //row 9/ column 3
-        valueRange2.set("values/[4]/[0]", "5"); //row 10/ column 3
+        valueRange2.set("values/[0]/[0]", "1"); // row 6/ column 3
+        valueRange2.set("values/[1]/[0]", "2"); // row 7/ column 3
+        valueRange2.set("values/[2]/[0]", "3"); // row 8/ column 3
+        valueRange2.set("values/[3]/[0]", "4"); // row 9/ column 3
+        valueRange2.set("values/[4]/[0]", "5"); // row 10/ column 3
 
-        valueRange2.set("values/[0]/[1]", "6"); //row 6/ column 4
-        valueRange2.set("values/[1]/[1]", "7"); //row 7/ column 4
-        valueRange2.set("values/[2]/[1]", "8"); //row 8/ column 4
-        valueRange2.set("values/[3]/[1]", "9"); //row 9/ column 4
-        valueRange2.set("values/[4]/[1]", "10"); //row 10/ column 4
+        valueRange2.set("values/[0]/[1]", "6");  // row 6/ column 4
+        valueRange2.set("values/[1]/[1]", "7");  // row 7/ column 4
+        valueRange2.set("values/[2]/[1]", "8");  // row 8/ column 4
+        valueRange2.set("values/[3]/[1]", "9");  // row 9/ column 4
+        valueRange2.set("values/[4]/[1]", "10"); // row 10/ column 4
 
         FirebaseJsonArray valueRangeArr;
         valueRangeArr.add(valueRange1);
         valueRangeArr.add(valueRange2);
 
-        //For Google Sheet API ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/batchUpdate
+        // For Google Sheet API ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/batchUpdate
 
         success = GSheet.values.batchUpdate(&response /* returned response */, "<spreadsheetId>" /* spreadsheet Id to update */, &valueRangeArr /* array of data range to update */);
         response.toString(Serial, true);
@@ -197,24 +198,22 @@ void loop()
 
         dataFilterValueRange1.set("dataFilter/a1Range", "Sheet1!E1:F2");
         dataFilterValueRange1.set("majorDimension", "COLUMNS");
-        dataFilterValueRange1.set("values/[0]/[0]", 1); //column 5/ row 1
-        dataFilterValueRange1.set("values/[0]/[1]", 2); //column 5/ row 2
+        dataFilterValueRange1.set("values/[0]/[0]", 1); // column 5/ row 1
+        dataFilterValueRange1.set("values/[0]/[1]", 2); // column 5/ row 2
 
-        dataFilterValueRange1.set("values/[1]/[0]", 3); //column 6/ row 1
-        dataFilterValueRange1.set("values/[1]/[1]", 4); //column 6/ row 2
+        dataFilterValueRange1.set("values/[1]/[0]", 3); // column 6/ row 1
+        dataFilterValueRange1.set("values/[1]/[1]", 4); // column 6/ row 2
 
         dataFilterValueRange2.set("dataFilter/a1Range", "Sheet1!G1:G3");
         dataFilterValueRange2.set("majorDimension", "ROWS");
-        dataFilterValueRange2.set("values/[0]/[0]", "one"); //row 1/ column 7
-        dataFilterValueRange2.set("values/[1]/[0]", "two"); //row 2/ column 7
-        dataFilterValueRange2.set("values/[2]/[0]", "three"); //row 3/ column 7
-
-        
+        dataFilterValueRange2.set("values/[0]/[0]", "one");   // row 1/ column 7
+        dataFilterValueRange2.set("values/[1]/[0]", "two");   // row 2/ column 7
+        dataFilterValueRange2.set("values/[2]/[0]", "three"); // row 3/ column 7
 
         dataFilterValueRangeArr.add(dataFilterValueRange1);
         dataFilterValueRangeArr.add(dataFilterValueRange2);
 
-        //For Google Sheet API ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/batchUpdateByDataFilter
+        // For Google Sheet API ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/batchUpdateByDataFilter
 
         success = GSheet.values.batchUpdateByDataFilter(&response /* returned response */, "<spreadsheetId>" /* spreadsheet Id to update */, &dataFilterValueRangeArr /* array of data range to update by filter */);
         response.toString(Serial, true);

@@ -1,31 +1,31 @@
 /**
- * Google Sheet Client, ESP_Google_Sheet_Client.cpp v1.1.0
- * 
+ * Google Sheet Client, ESP_Google_Sheet_Client.cpp v1.2.0
+ *
  * This library supports Espressif ESP8266 and ESP32 MCUs
- * 
- * Created May 7, 2022
+ *
+ * Created November 17, 2022
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
- * 
- * 
+ *
+ *
  * Permission is hereby granted, free of charge, to any person returning a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
  * the Software, and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+ */
 
 #ifndef GSheetClass_CPP
 #define GSheetClass_CPP
@@ -104,11 +104,8 @@ bool GSheetClass::setClock(float gmtOffset)
     return config.internal.esp_signer_clock_rdy;
 }
 
-void GSheetClass::beginRequest(FirebaseJson *response, MB_String &req, host_type_t host_type)
+void GSheetClass::beginRequest(MB_String &req, host_type_t host_type)
 {
-
-    if (response)
-        response->clear();
 
     if (!config.signer.wcs)
     {
@@ -188,7 +185,7 @@ void GSheetClass::setSecure()
         {
 
 #if defined(ESP8266)
-                setClock(0);
+            setClock(0);
 #endif
         }
 
@@ -203,7 +200,8 @@ void GSheetClass::setSecure()
 #endif
             int type = certFileStorageType == esP_google_sheet_file_storage_type_flash ? 1 : 2;
             config.signer.wcs->setCACertFile(certFile.c_str(), type, config.internal.sd_config);
-        }else
+        }
+        else
         {
             if (cert_addr > 0)
             {
@@ -212,44 +210,30 @@ void GSheetClass::setSecure()
             else
                 config.signer.wcs->setCACert(NULL);
         }
-     
+
         cert_updated = false;
     }
 }
 
-bool GSheetClass::processRequest(FirebaseJson *response, MB_String &req, int &httpcode)
+bool GSheetClass::processRequest(MB_String &req, MB_String &response, int &httpcode)
 {
 
-    config.signer.json = new FirebaseJson();
-    config.signer.result = new FirebaseJsonData();
     int ret = config.signer.wcs->send(req.c_str());
     req.clear();
     config.signer.reuseSession = true;
 
     if (ret == 0)
     {
-        if (this->handleTokenResponse(httpcode))
-        {
+        if (this->handleServerResponse(httpcode, response))
             ret = 1;
-            if (parseJsonResponse(esp_signer_pgm_str_68) || parseJsonResponse(esp_signer_pgm_str_113))
-                ret = 0;
-
-            if (response)
-                response->setJsonData(config.signer.json->raw());
-        }
     }
-
-    Serial.println(ESP.getFreeHeap());
-
-    delete config.signer.json;
-    delete config.signer.result;
 
     config.signer.reuseSession = false;
 
     return ret;
 }
 
-bool GSheetClass::mGet(FirebaseJson *response, const char *spreadsheetId, const char *ranges, const char *majorDimension, const char *valueRenderOption, const char *dateTimeRenderOption, operation_type_t type)
+bool GSheetClass::mGet(MB_String &response, const char *spreadsheetId, const char *ranges, const char *majorDimension, const char *valueRenderOption, const char *dateTimeRenderOption, operation_type_t type)
 {
     if (!checkToken())
         return false;
@@ -257,7 +241,7 @@ bool GSheetClass::mGet(FirebaseJson *response, const char *spreadsheetId, const 
     MB_String req;
     int httpcode = 0;
 
-    beginRequest(response, req, host_type_sheet);
+    beginRequest(req, host_type_sheet);
 
     if (type == operation_type_range)
     {
@@ -332,20 +316,38 @@ bool GSheetClass::mGet(FirebaseJson *response, const char *spreadsheetId, const 
         req += ranges;
     }
 
-    return processRequest(response, req, httpcode);
+    return processRequest(req, response, httpcode);
 }
 
-bool GSheetClass::get(FirebaseJson *response, const char *spreadsheetId, const char *range)
+bool GSheetClass::isError(MB_String &response)
+{
+    config.signer.json = new FirebaseJson();
+    bool ret = false;
+    if (config.signer.json->setJsonData(response))
+    {
+        config.signer.result = new FirebaseJsonData();
+        ret = parseJsonResponse(esp_signer_pgm_str_68) || parseJsonResponse(esp_signer_pgm_str_113);
+        delete config.signer.result;
+        config.signer.result = nullptr;
+    }
+
+    delete config.signer.json;
+    config.signer.json = nullptr;
+
+    return ret;
+}
+
+bool GSheetClass::get(MB_String &response, const char *spreadsheetId, const char *range)
 {
     return mGet(response, spreadsheetId, range, "", "", "", operation_type_range);
 }
 
-bool GSheetClass::batchGet(FirebaseJson *response, const char *spreadsheetId, const char *ranges, const char *majorDimension, const char *valueRenderOption, const char *dateTimeRenderOption)
+bool GSheetClass::batchGet(MB_String &response, const char *spreadsheetId, const char *ranges, const char *majorDimension, const char *valueRenderOption, const char *dateTimeRenderOption)
 {
     return mGet(response, spreadsheetId, ranges, majorDimension, valueRenderOption, dateTimeRenderOption, operation_type_batch);
 }
 
-bool GSheetClass::batchGetByDataFilter(FirebaseJson *response, const char *spreadsheetId, FirebaseJsonArray *dataFiltersArray, const char *majorDimension, const char *valueRenderOption, const char *dateTimeRenderOption)
+bool GSheetClass::batchGetByDataFilter(MB_String &response, const char *spreadsheetId, FirebaseJsonArray *dataFiltersArray, const char *majorDimension, const char *valueRenderOption, const char *dateTimeRenderOption)
 {
     if (!checkToken())
         return false;
@@ -367,17 +369,17 @@ bool GSheetClass::batchGetByDataFilter(FirebaseJson *response, const char *sprea
     return false;
 }
 
-bool GSheetClass::append(FirebaseJson *response, const char *spreadsheetId, const char *range, FirebaseJson *valueRange, const char *valueInputOption, const char *insertDataOption, const char *includeValuesInResponse, const char *responseValueRenderOption, const char *responseDateTimeRenderOption)
+bool GSheetClass::append(MB_String &response, const char *spreadsheetId, const char *range, FirebaseJson *valueRange, const char *valueInputOption, const char *insertDataOption, const char *includeValuesInResponse, const char *responseValueRenderOption, const char *responseDateTimeRenderOption)
 {
     return mUpdate(true, operation_type_range, response, spreadsheetId, range, valueRange, valueInputOption, insertDataOption, includeValuesInResponse, responseValueRenderOption, responseDateTimeRenderOption);
 }
 
-bool GSheetClass::update(FirebaseJson *response, const char *spreadsheetId, const char *range, FirebaseJson *valueRange, const char *valueInputOption, const char *includeValuesInResponse, const char *responseValueRenderOption, const char *responseDateTimeRenderOption)
+bool GSheetClass::update(MB_String &response, const char *spreadsheetId, const char *range, FirebaseJson *valueRange, const char *valueInputOption, const char *includeValuesInResponse, const char *responseValueRenderOption, const char *responseDateTimeRenderOption)
 {
     return mUpdate(false, operation_type_range, response, spreadsheetId, range, valueRange, valueInputOption, "", includeValuesInResponse, responseValueRenderOption, responseDateTimeRenderOption);
 }
 
-bool GSheetClass::_batchUpdate(FirebaseJson *response, const char *spreadsheetId, FirebaseJsonArray *valueRangeArray, const char *valueInputOption, const char *includeValuesInResponse, const char *responseValueRenderOption, const char *responseDateTimeRenderOption)
+bool GSheetClass::_batchUpdate(MB_String &response, const char *spreadsheetId, FirebaseJsonArray *valueRangeArray, const char *valueInputOption, const char *includeValuesInResponse, const char *responseValueRenderOption, const char *responseDateTimeRenderOption)
 {
     if (valueRangeArray)
     {
@@ -389,7 +391,7 @@ bool GSheetClass::_batchUpdate(FirebaseJson *response, const char *spreadsheetId
     return false;
 }
 
-bool GSheetClass::batchUpdateByDataFilter(FirebaseJson *response, const char *spreadsheetId, FirebaseJsonArray *DataFilterValueRangeArray, const char *valueInputOption, const char *includeValuesInResponse, const char *responseValueRenderOption, const char *responseDateTimeRenderOption)
+bool GSheetClass::batchUpdateByDataFilter(MB_String &response, const char *spreadsheetId, FirebaseJsonArray *DataFilterValueRangeArray, const char *valueInputOption, const char *includeValuesInResponse, const char *responseValueRenderOption, const char *responseDateTimeRenderOption)
 {
     if (DataFilterValueRangeArray)
     {
@@ -423,7 +425,7 @@ void GSheetClass::mUpdateInit(FirebaseJson *js, FirebaseJsonArray *rangeArr, con
         js->add(FPSTR("responseDateTimeRenderOption"), responseDateTimeRenderOption);
 }
 
-bool GSheetClass::mUpdate(bool append, operation_type_t type, FirebaseJson *response, const char *spreadsheetId, const char *range, FirebaseJson *valueRange, const char *valueInputOption, const char *insertDataOption, const char *includeValuesInResponse, const char *responseValueRenderOption, const char *responseDateTimeRenderOption)
+bool GSheetClass::mUpdate(bool append, operation_type_t type, MB_String &response, const char *spreadsheetId, const char *range, FirebaseJson *valueRange, const char *valueInputOption, const char *insertDataOption, const char *includeValuesInResponse, const char *responseValueRenderOption, const char *responseDateTimeRenderOption)
 {
     if (!checkToken())
         return false;
@@ -431,7 +433,7 @@ bool GSheetClass::mUpdate(bool append, operation_type_t type, FirebaseJson *resp
     MB_String req;
     int httpcode = 0;
 
-    beginRequest(response, req, host_type_sheet);
+    beginRequest(req, host_type_sheet);
 
     if (append || type == operation_type_batch || type == operation_type_filter)
         req = FPSTR("POST /v4/spreadsheets/");
@@ -493,27 +495,27 @@ bool GSheetClass::mUpdate(bool append, operation_type_t type, FirebaseJson *resp
     if (valueRange)
         req += valueRange->raw();
 
-    return processRequest(response, req, httpcode);
+    return processRequest(req, response, httpcode);
 }
 
-bool GSheetClass::clear(FirebaseJson *response, const char *spreadsheetId, const char *range)
+bool GSheetClass::clear(MB_String &response, const char *spreadsheetId, const char *range)
 {
     return mClear(response, spreadsheetId, range, operation_type_range);
 }
 
-bool GSheetClass::batchClear(FirebaseJson *response, const char *spreadsheetId, const char *ranges)
+bool GSheetClass::batchClear(MB_String &response, const char *spreadsheetId, const char *ranges)
 {
     return mClear(response, spreadsheetId, ranges, operation_type_batch);
 }
 
-bool GSheetClass::batchClearByDataFilter(FirebaseJson *response, const char *spreadsheetId, FirebaseJsonArray *dataFiltersArray)
+bool GSheetClass::batchClearByDataFilter(MB_String &response, const char *spreadsheetId, FirebaseJsonArray *dataFiltersArray)
 {
     FirebaseJson js;
     js.add(FPSTR("dataFilters"), *dataFiltersArray);
     return mClear(response, spreadsheetId, js.raw(), operation_type_filter);
 }
 
-bool GSheetClass::mClear(FirebaseJson *response, const char *spreadsheetId, const char *ranges, operation_type_t type)
+bool GSheetClass::mClear(MB_String &response, const char *spreadsheetId, const char *ranges, operation_type_t type)
 {
     if (!checkToken())
         return false;
@@ -521,7 +523,7 @@ bool GSheetClass::mClear(FirebaseJson *response, const char *spreadsheetId, cons
     MB_String req;
     int httpcode = 0;
 
-    beginRequest(response, req, host_type_sheet);
+    beginRequest(req, host_type_sheet);
 
     req = FPSTR("POST /v4/spreadsheets/");
     req += spreadsheetId;
@@ -584,10 +586,10 @@ bool GSheetClass::mClear(FirebaseJson *response, const char *spreadsheetId, cons
         }
     }
 
-    return processRequest(response, req, httpcode);
+    return processRequest(req, response, httpcode);
 }
 
-bool GSheetClass::copyTo(FirebaseJson *response, const char *spreadsheetId, uint32_t sheetId, const char *destinationSpreadsheetId)
+bool GSheetClass::copyTo(MB_String &response, const char *spreadsheetId, uint32_t sheetId, const char *destinationSpreadsheetId)
 {
     if (!checkToken())
         return false;
@@ -595,7 +597,7 @@ bool GSheetClass::copyTo(FirebaseJson *response, const char *spreadsheetId, uint
     MB_String req;
     int httpcode = 0;
 
-    beginRequest(response, req, host_type_sheet);
+    beginRequest(req, host_type_sheet);
 
     req = FPSTR("POST /v4/spreadsheets/");
     req += spreadsheetId;
@@ -614,10 +616,10 @@ bool GSheetClass::copyTo(FirebaseJson *response, const char *spreadsheetId, uint
     req += FPSTR("\r\n");
     req += s;
 
-    return processRequest(response, req, httpcode);
+    return processRequest(req, response, httpcode);
 }
 
-bool GSheetClass::batchUpdate(FirebaseJson *response, const char *spreadsheetId, FirebaseJsonArray *requestsArray, const char *includeSpreadsheetInResponse, const char *responseRanges, const char *responseIncludeGridData)
+bool GSheetClass::batchUpdate(MB_String &response, const char *spreadsheetId, FirebaseJsonArray *requestsArray, const char *includeSpreadsheetInResponse, const char *responseRanges, const char *responseIncludeGridData)
 {
     if (!checkToken())
         return false;
@@ -625,7 +627,7 @@ bool GSheetClass::batchUpdate(FirebaseJson *response, const char *spreadsheetId,
     MB_String req;
     int httpcode = 0;
 
-    beginRequest(response, req, host_type_sheet);
+    beginRequest(req, host_type_sheet);
 
     req = FPSTR("POST /v4/spreadsheets/");
     req += spreadsheetId;
@@ -681,13 +683,13 @@ bool GSheetClass::batchUpdate(FirebaseJson *response, const char *spreadsheetId,
         req += FPSTR("\r\n");
         req += js.raw();
 
-        return processRequest(response, req, httpcode);
+        return processRequest(req, response, httpcode);
     }
 
     return false;
 }
 
-bool GSheetClass::create(FirebaseJson *response, FirebaseJson *spreadsheet, const char *sharedUserEmail)
+bool GSheetClass::create(MB_String &response, FirebaseJson *spreadsheet, const char *sharedUserEmail)
 {
     if (!checkToken())
         return false;
@@ -695,7 +697,7 @@ bool GSheetClass::create(FirebaseJson *response, FirebaseJson *spreadsheet, cons
     MB_String req;
     int httpcode = 0;
 
-    beginRequest(response, req, host_type_sheet);
+    beginRequest(req, host_type_sheet);
 
     req = FPSTR("POST /v4/spreadsheets");
 
@@ -704,25 +706,9 @@ bool GSheetClass::create(FirebaseJson *response, FirebaseJson *spreadsheet, cons
     req += FPSTR("\r\n");
     req += spreadsheet->raw();
 
-    bool ret = processRequest(response, req, httpcode);
-
-    if (ret)
-    {
-        ret = false;
-
-        FirebaseJsonData result;
-        response->get(result, (const char *)FPSTR("spreadsheetId"));
-
-        if (result.success)
-        {
-            FirebaseJson res;
-            ret = createPermission(&res, result.to<const char *>(), (const char *)FPSTR("writer"), (const char *)FPSTR("user"), sharedUserEmail);
-        }
-    }
-
-    return ret;
+    return processRequest(req, response, httpcode);
 }
-bool GSheetClass::getMetadata(FirebaseJson *response, const char *spreadsheetId, uint32_t metadataId)
+bool GSheetClass::getMetadata(MB_String &response, const char *spreadsheetId, uint32_t metadataId)
 {
     if (!checkToken())
         return false;
@@ -730,7 +716,7 @@ bool GSheetClass::getMetadata(FirebaseJson *response, const char *spreadsheetId,
     MB_String req;
     int httpcode = 0;
 
-    beginRequest(response, req, host_type_sheet);
+    beginRequest(req, host_type_sheet);
 
     req = FPSTR("GET /v4/spreadsheets/");
     req += spreadsheetId;
@@ -741,10 +727,10 @@ bool GSheetClass::getMetadata(FirebaseJson *response, const char *spreadsheetId,
 
     req += FPSTR("\r\n");
 
-    return processRequest(response, req, httpcode);
+    return processRequest(req, response, httpcode);
 }
 
-bool GSheetClass::searchMetadata(FirebaseJson *response, const char *spreadsheetId, FirebaseJsonArray *dataFiltersArray)
+bool GSheetClass::searchMetadata(MB_String &response, const char *spreadsheetId, FirebaseJsonArray *dataFiltersArray)
 {
     if (!checkToken())
         return false;
@@ -754,7 +740,7 @@ bool GSheetClass::searchMetadata(FirebaseJson *response, const char *spreadsheet
         MB_String req;
         int httpcode = 0;
 
-        beginRequest(response, req, host_type_sheet);
+        beginRequest(req, host_type_sheet);
 
         req = FPSTR("POST /v4/spreadsheets/");
         req += spreadsheetId;
@@ -769,13 +755,13 @@ bool GSheetClass::searchMetadata(FirebaseJson *response, const char *spreadsheet
 
         req += js.raw();
 
-        return processRequest(response, req, httpcode);
+        return processRequest(req, response, httpcode);
     }
 
     return false;
 }
 
-bool GSheetClass::getSpreadsheet(FirebaseJson *response, const char *spreadsheetId, const char *ranges, const char *includeGridData)
+bool GSheetClass::getSpreadsheet(MB_String &response, const char *spreadsheetId, const char *ranges, const char *includeGridData)
 {
     if (!checkToken())
         return false;
@@ -783,7 +769,7 @@ bool GSheetClass::getSpreadsheet(FirebaseJson *response, const char *spreadsheet
     MB_String req;
     int httpcode = 0;
 
-    beginRequest(response, req, host_type_drive);
+    beginRequest(req, host_type_drive);
 
     req = FPSTR("GET /v4/spreadsheets/");
     req += spreadsheetId;
@@ -832,10 +818,10 @@ bool GSheetClass::getSpreadsheet(FirebaseJson *response, const char *spreadsheet
 
     req += FPSTR("\r\n");
 
-    return processRequest(response, req, httpcode);
+    return processRequest(req, response, httpcode);
 }
 
-bool GSheetClass::getSpreadsheetByDataFilter(FirebaseJson *response, const char *spreadsheetId, FirebaseJsonArray *dataFiltersArray, const char *includeGridData)
+bool GSheetClass::getSpreadsheetByDataFilter(MB_String &response, const char *spreadsheetId, FirebaseJsonArray *dataFiltersArray, const char *includeGridData)
 {
     if (!checkToken())
         return false;
@@ -845,7 +831,7 @@ bool GSheetClass::getSpreadsheetByDataFilter(FirebaseJson *response, const char 
         MB_String req;
         int httpcode = 0;
 
-        beginRequest(response, req, host_type_drive);
+        beginRequest(req, host_type_drive);
 
         req = FPSTR("POST /v4/spreadsheets/");
         req += spreadsheetId;
@@ -863,13 +849,13 @@ bool GSheetClass::getSpreadsheetByDataFilter(FirebaseJson *response, const char 
 
         req += FPSTR("\r\n");
         req += js.raw();
-        return processRequest(response, req, httpcode);
+        return processRequest(req, response, httpcode);
     }
 
     return false;
 }
 
-bool GSheetClass::deleteFile(FirebaseJson *response, const char *spreadsheetId, bool closeSession)
+bool GSheetClass::deleteFile(MB_String &response, const char *spreadsheetId, bool closeSession)
 {
     if (!checkToken())
         return false;
@@ -884,7 +870,7 @@ bool GSheetClass::deleteFile(FirebaseJson *response, const char *spreadsheetId, 
     MB_String req;
     int httpcode = 0;
 
-    beginRequest(response, req, host_type_drive);
+    beginRequest(req, host_type_drive);
 
     req = FPSTR("DELETE /drive/v3/files/");
     req += spreadsheetId;
@@ -893,7 +879,7 @@ bool GSheetClass::deleteFile(FirebaseJson *response, const char *spreadsheetId, 
 
     req += FPSTR("\r\n");
 
-    processRequest(response, req, httpcode);
+    processRequest(req, response, httpcode);
 
     if (closeSession)
     {
@@ -905,20 +891,20 @@ bool GSheetClass::deleteFile(FirebaseJson *response, const char *spreadsheetId, 
     return httpcode == 204;
 }
 
-bool GSheetClass::deleteFiles(FirebaseJson *response)
+bool GSheetClass::deleteFiles(MB_String &response)
 {
 
     if (!checkToken())
         return false;
 
-    FirebaseJson js;
-    bool ret = listFiles(&js);
+    bool ret = listFiles(response);
 
     if (ret)
     {
         ret = false;
         FirebaseJsonData result;
         FirebaseJsonArray arr;
+        FirebaseJson js(response);
         js.get(result, FPSTR("files"));
         if (result.success)
         {
@@ -954,7 +940,7 @@ bool GSheetClass::deleteFiles(FirebaseJson *response)
     return ret;
 }
 
-bool GSheetClass::listFiles(FirebaseJson *response, uint32_t pageSize, const char *orderBy, const char *pageToken)
+bool GSheetClass::listFiles(MB_String &response, uint32_t pageSize, const char *orderBy, const char *pageToken)
 {
     if (!checkToken())
         return false;
@@ -969,7 +955,7 @@ bool GSheetClass::listFiles(FirebaseJson *response, uint32_t pageSize, const cha
     if (pageSize == 0 || pageSize > 10)
         pageSize = 10;
 
-    beginRequest(response, req, host_type_drive);
+    beginRequest(req, host_type_drive);
 
     req = FPSTR("GET /drive/v3/files?pageSize=");
     req += pageSize;
@@ -990,7 +976,7 @@ bool GSheetClass::listFiles(FirebaseJson *response, uint32_t pageSize, const cha
 
     req += FPSTR("\r\n");
 
-    bool ret = processRequest(response, req, httpcode);
+    bool ret = processRequest(req, response, httpcode);
 
     if (config.signer.wcs)
         delete config.signer.wcs;
@@ -999,7 +985,31 @@ bool GSheetClass::listFiles(FirebaseJson *response, uint32_t pageSize, const cha
     return ret;
 }
 
-bool GSheetClass::createPermission(FirebaseJson *response, const char *fileid, const char *role, const char *type, const char *email)
+MB_String GSheetClass::mGetValue(MB_String &response, const char *key)
+{
+    MB_String _key = "\"";
+    _key += key;
+    _key += "\"";
+
+    size_t p1 = response.find(_key);
+    if (p1 != MB_String::npos)
+    {
+        size_t p2 = response.find(':', p1 + _key.length());
+
+        if (p2 != MB_String::npos)
+        {
+            size_t p3 = response.find('"', p2 + 1);
+            if (p3 != MB_String::npos)
+            {
+                size_t p4 = response.find('"', p3 + 1);
+                return response.substr(p3 + 1, p4 - p3 - 1);
+            }
+        }
+    }
+    return MB_String();
+}
+
+bool GSheetClass::createPermission(MB_String &response, const char *fileid, const char *role, const char *type, const char *email)
 {
     if (config.signer.wcs)
         delete config.signer.wcs;
@@ -1008,7 +1018,7 @@ bool GSheetClass::createPermission(FirebaseJson *response, const char *fileid, c
     MB_String req;
     int httpcode = 0;
 
-    beginRequest(response, req, host_type_drive);
+    beginRequest(req, host_type_drive);
 
     req = FPSTR("POST /drive/v3/files/");
     req += fileid;
@@ -1027,7 +1037,7 @@ bool GSheetClass::createPermission(FirebaseJson *response, const char *fileid, c
     req += FPSTR("\r\n");
     req += js.raw();
 
-    bool ret = processRequest(response, req, httpcode);
+    bool ret = processRequest(req, response, httpcode);
 
     if (config.signer.wcs)
         delete config.signer.wcs;

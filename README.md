@@ -233,6 +233,8 @@ void loop()
         //you need to set share access to the Service Account's CLIENT_EMAIL
 
         FirebaseJson response;
+        // Instead of using FirebaseJson for response, you can use String for response to the functions 
+        // especially in low memory device that deserializing large JSON response may be failed as in ESP8266
 
         Serial.println("Get spreadsheet values from range...");
         Serial.println("---------------------------------------------------------------");
@@ -533,7 +535,7 @@ bool sdMMCBegin(<string> mountpoint = "/sdcard", bool mode1bit = false, bool for
 
 #### Applies one or more updates to the spreadsheet. 
 
-param **`response`** (FirebaseJson) The returned response.
+param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheetId`** (string) The spreadsheet to apply the updates to.
 
@@ -555,10 +557,14 @@ For ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spr
 bool batchUpdate(FirebaseJson *response, <string> spreadsheetId, FirebaseJsonArray *requestsArray, <string> includeSpreadsheetInResponse = "", <string> responseRanges = "", <string> responseIncludeGridData = "");
 ```
 
+```cpp
+bool batchUpdate(String *response, <string> spreadsheetId, FirebaseJsonArray *requestsArray, <string> includeSpreadsheetInResponse = "", <string> responseRanges = "", <string> responseIncludeGridData = "");
+```
+
 
 #### Creates a spreadsheet, returning the newly created spreadsheet. 
 
-param **`response`** (FirebaseJson) The returned response.
+param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheet`** (FirebaseJson) The spreadsheet object.
 
@@ -574,10 +580,14 @@ For ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spr
 bool create(FirebaseJson *response, FirebaseJson *spreadsheet, <string> sharedUserEmail);
 ```
 
+```cpp
+bool create(String *response, FirebaseJson *spreadsheet, <string> sharedUserEmail);
+```
+
 
 #### Get the spreadsheet at the given ID. 
 
-param **`response`** (FirebaseJson) The returned response.
+param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheetId`** (FirebaseJson) The spreadsheet to request. 
 
@@ -595,10 +605,15 @@ For ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/sp
 bool get(FirebaseJson *response, <string> spreadsheetId, <string> ranges = "", <string> includeGridData = "");
 ```
 
+```cpp
+bool get(String *response, <string> spreadsheetId, <string> ranges = "", <string> includeGridData = "");
+```
+
+
 
 #### Get the spreadsheet at the given ID. 
 
-param **`response`** (FirebaseJson) The returned response.
+param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheetId`** (FirebaseJson) The spreadsheet to request. 
 
@@ -610,10 +625,15 @@ For ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/sp
 bool getByDataFilter(FirebaseJson *response, <string> spreadsheetId, FirebaseJsonArray *dataFiltersArray, <string> includeGridData = "");
 ```
 
+```cpp
+bool getByDataFilter(String *response, <string> spreadsheetId, FirebaseJsonArray *dataFiltersArray, <string> includeGridData = "");
+```
+
+
 
 #### Delete a spreadsheet from Google Drive. 
 
-param **`response`** (FirebaseJson) The returned response.
+param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheetId`** (FirebaseJson) The ID of spreadsheet to delete. 
 
@@ -627,10 +647,15 @@ Note The response may be empty.
 bool deleteFile(FirebaseJson *response, <string> spreadsheetId, bool closeSession = true);
 ```
 
+```cpp
+bool deleteFile(String *response, <string> spreadsheetId, bool closeSession = true);
+```
+
+
 
 #### Delete spreadsheets from Google Drive. 
 
-param **`response`** (FirebaseJson) The returned response.
+param **`response`** (FirebaseJson or String) The returned response.
 
 Note This will delete last 5 spreadsheets at a time.
 
@@ -642,10 +667,14 @@ Note: The response may be empty.
 bool deleteFiles(FirebaseJson *response);
 ```
 
+```cpp
+bool deleteFiles(String *response);
+```
+
 
 #### List the spreadsheets in Google Drive. 
 
-param **`response`** (FirebaseJson) The returned response.
+param **`response`** (FirebaseJson or String) The returned response.
 
 param **`pageSize`** (integer) The maximum number of files to return per page. 
 
@@ -667,12 +696,16 @@ return **`Boolean`** type status indicates the success of the operation.
 bool listFiles(FirebaseJson *response, uint32_t pageSize = 5, <string> orderBy = "createdTime%20desc", <string> pageToken = "");
 ```
 
+```cpp
+bool listFiles(String *response, uint32_t pageSize = 5, <string> orderBy = "createdTime%20desc", <string> pageToken = "");
+```
+
 
 ### Spreadsheets.Values member functions
 
 #### Get a range of values from a spreadsheet.
 
-param **`response`** (FirebaseJson) The returned response.
+param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheetId`** (string) The ID of the spreadsheet to retrieve data from.
 
@@ -686,10 +719,14 @@ For ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spr
 bool get(FirebaseJson *response, <string> spreadsheetId, <string> range);
 ```
 
+```cpp
+bool get(String *response, <string> spreadsheetId, <string> range);
+```
+
 
 #### Get one or more ranges of values from a spreadsheet.
 
-param **`response`** (FirebaseJson) The returned response.
+param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheetId`** (string) The ID of the spreadsheet to retrieve data from.
 
@@ -748,10 +785,14 @@ For ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spr
 bool batchGet(FirebaseJson *response, <string> spreadsheetId, <string> ranges, <string> majorDimension = "", <string> valueRenderOption = "", <string> dateTimeRenderOption = "");
 ```
 
+```cpp
+bool batchGet(String *response, <string> spreadsheetId, <string> ranges, <string> majorDimension = "", <string> valueRenderOption = "", <string> dateTimeRenderOption = "");
+```
+
 
 #### Get one or more ranges of values that match the specified data filters.
 
-param **`response`** (FirebaseJson) The returned response.
+param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheetId`** (string) The ID of the spreadsheet to retrieve data from.
 
@@ -809,10 +850,14 @@ For ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spr
 bool batchGetByDataFilter(FirebaseJson *response, <string> spreadsheetId, FirebaseJsonArray *dataFiltersArray, <string> majorDimension, <string> valueRenderOption = "", <string> dateTimeRenderOption = "");
 ```
 
+```cpp
+bool batchGetByDataFilter(String *response, <string> spreadsheetId, FirebaseJsonArray *dataFiltersArray, <string> majorDimension, <string> valueRenderOption = "", <string> dateTimeRenderOption = "");
+```
+
 
 #### Appends values to a spreadsheet.
 
-param **`response`** (FirebaseJson) The returned response.
+param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheetId`** (string) The ID of the spreadsheet to update.
 
@@ -893,10 +938,15 @@ February 1st 1900 at 3pm would be 33.625. This correctly treats the year 1900 as
 ```cpp
 bool append(FirebaseJson *response, <string> spreadsheetId, <string> range, FirebaseJson *valueRange, <string> valueInputOption = "USER_ENTERED", <string> insertDataOption = "", <string> includeValuesInResponse = "", <string> responseValueRenderOption = "", <string> responseDateTimeRenderOption = "");
 ```
+
+```cpp
+bool append(String *response, <string> spreadsheetId, <string> range, FirebaseJson *valueRange, <string> valueInputOption = "USER_ENTERED", <string> insertDataOption = "", <string> includeValuesInResponse = "", <string> responseValueRenderOption = "", <string> responseDateTimeRenderOption = "");
+```
+
     
 #### Sets values in a range of a spreadsheet. 
  
-param **`response`** (FirebaseJson) The returned response.
+param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheetId`** (string) The ID of the spreadsheet to update.
 
@@ -966,10 +1016,14 @@ For ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spr
 bool update(FirebaseJson *response, <string> spreadsheetId, <string> range, FirebaseJson *valueRange, <string> valueInputOption = "USER_ENTERED", <string> includeValuesInResponse = "", <string> responseValueRenderOption = "", <string> responseDateTimeRenderOption = "");
 ```
 
+```cpp
+bool update(String *response, <string> spreadsheetId, <string> range, FirebaseJson *valueRange, <string> valueInputOption = "USER_ENTERED", <string> includeValuesInResponse = "", <string> responseValueRenderOption = "", <string> responseDateTimeRenderOption = "");
+```
+
 
 #### Sets values in one or more ranges of a spreadsheet.
 
-param **`response`** (FirebaseJson) The returned response.
+param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheetId`** (string) The ID of the spreadsheet to update.
 
@@ -1037,10 +1091,14 @@ For ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spr
 bool batchUpdate(FirebaseJson *response, <string> spreadsheetId, FirebaseJsonArray *valueRangeArray, <string> valueInputOption = "USER_ENTERED", <string> includeValuesInResponse = "", <string> responseValueRenderOption = "", <string> responseDateTimeRenderOption = "");
 ```
 
+```cpp
+bool batchUpdate(String *response, <string> spreadsheetId, FirebaseJsonArray *valueRangeArray, <string> valueInputOption = "USER_ENTERED", <string> includeValuesInResponse = "", <string> responseValueRenderOption = "", <string> responseDateTimeRenderOption = "");
+```
+
 
 #### Sets values in one or more ranges of a spreadsheet.
 
-param **`response`** (FirebaseJson) The returned response.
+param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheetId`** (string) The ID of the spreadsheet to update.
 
@@ -1108,10 +1166,14 @@ For ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spr
 bool batchUpdateByDataFilter(FirebaseJson *response, <string> spreadsheetId, FirebaseJsonArray *DataFilterValueRangeArray, <string> valueInputOption = "USER_ENTERED", <string> includeValuesInResponse = "", <string> responseValueRenderOption = "", <string> responseDateTimeRenderOption = "");
 ```
 
+```cpp
+bool batchUpdateByDataFilter(String *response, <string> spreadsheetId, FirebaseJsonArray *DataFilterValueRangeArray, <string> valueInputOption = "USER_ENTERED", <string> includeValuesInResponse = "", <string> responseValueRenderOption = "", <string> responseDateTimeRenderOption = "");
+```
+
 
 #### Clears values from a spreadsheet. The caller must specify the spreadsheet ID and range. 
 
-param **`response`** (FirebaseJson) The returned response.
+param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheetId`** (string) The ID of the spreadsheet to update. 
 
@@ -1125,9 +1187,13 @@ For ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spr
 bool clear(FirebaseJson *response, <string> spreadsheetId, <string> range);
 ```
 
+```cpp
+bool clear(String *response, <string> spreadsheetId, <string> range);
+```
+
 #### Clears one or more ranges of values from a spreadsheet. 
 
-param **`response`** (FirebaseJson) The returned response.
+param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheetId`** (string) The ID of the spreadsheet to update.
 
@@ -1141,9 +1207,13 @@ For ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spr
 bool batchClear(FirebaseJson *response, <string> spreadsheetId, <string> ranges);
 ```
 
+```cpp
+bool batchClear(String *response, <string> spreadsheetId, <string> ranges);
+```
+
 #### Clears one or more ranges of values from a spreadsheet. 
 
-param **`response`** (FirebaseJson) The returned response.
+param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheetId`** (string) The ID of the spreadsheet to update.
 
@@ -1157,12 +1227,16 @@ For ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spr
 bool batchClearByDataFilter(FirebaseJson *response, <string> spreadsheetId, FirebaseJsonArray *dataFiltersArray);
 ```
 
+```cpp
+bool batchClearByDataFilter(String *response, <string> spreadsheetId, FirebaseJsonArray *dataFiltersArray);
+```
+
 
 ### Spreadsheets.Sheets Member Functions
 
 #### Copies a single sheet from a spreadsheet to another spreadsheet. 
 
-param **`response`** (FirebaseJson) The returned response.
+param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheetId`** (string) The ID of the spreadsheet containing the sheet to copy.
 
@@ -1184,12 +1258,16 @@ For ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spr
 bool copyTo(FirebaseJson *response, <string> spreadsheetId, uint32_t sheetId, <string> destinationSpreadsheetId);
 ```
 
+```cpp
+bool copyTo(String *response, <string> spreadsheetId, uint32_t sheetId, <string> destinationSpreadsheetId);
+```
+
 
 ### Spreadsheets.DeveloperMetadata Member Functions
 
 #### Get the developer metadata with the specified ID. 
 
-param **`response`** (FirebaseJson) The returned response.
+param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheetId`** (string) The ID of the spreadsheet to retrieve metadata from.
 
@@ -1201,9 +1279,13 @@ For ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spr
 bool get(FirebaseJson *response, <string> spreadsheetId, uint32_t metadataId);
 ```
 
+```cpp
+bool get(String *response, <string> spreadsheetId, uint32_t metadataId);
+```
+
 #### Get all developer metadata matching the specified DataFilter.
 
-param **`response`** (FirebaseJson) The returned response.
+param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheetId`** (string) The ID of the spreadsheet to retrieve metadata from. 
 
@@ -1219,6 +1301,9 @@ For ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spr
 bool search(FirebaseJson *response, <string> spreadsheetId, FirebaseJsonArray *dataFiltersArray);
 ```
 
+```cpp
+bool search(String *response, <string> spreadsheetId, FirebaseJsonArray *dataFiltersArray);
+```
 
 
 ## License

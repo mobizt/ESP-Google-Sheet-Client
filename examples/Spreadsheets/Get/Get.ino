@@ -1,16 +1,16 @@
 
 /**
  * Created by K. Suwatchai (Mobizt)
- * 
+ *
  * Email: suwatchai@outlook.com
- * 
+ *
  * Github: https://github.com/mobizt
- * 
+ *
  * Copyright (c) 2021 mobizt
  *
-*/
+ */
 
-//This example shows how to get the spreadsheet.
+// This example shows how to get the spreadsheet.
 
 #include <Arduino.h>
 #if defined(ESP8266)
@@ -23,14 +23,14 @@
 #define WIFI_SSID "WIFI_AP"
 #define WIFI_PASSWORD "WIFI_PASSWORD"
 
-//For how to create Service Account and how to use the library, go to https://github.com/mobizt/ESP-Google-Sheet-Client
+// For how to create Service Account and how to use the library, go to https://github.com/mobizt/ESP-Google-Sheet-Client
 
 #define PROJECT_ID "PROJECT_ID"
 
-//Service Account's client email
+// Service Account's client email
 #define CLIENT_EMAIL "CLIENT_EMAIL"
 
-//Service Account's private key
+// Service Account's private key
 const char PRIVATE_KEY[] PROGMEM = "-----BEGIN PRIVATE KEY-----XXXXXXXXXXXX-----END PRIVATE KEY-----\n";
 
 bool taskComplete = false;
@@ -60,28 +60,30 @@ void setup()
     Serial.println(WiFi.localIP());
     Serial.println();
 
-    //Set the callback for Google API access token generation status (for debug only)
+    // Set the callback for Google API access token generation status (for debug only)
     GSheet.setTokenCallback(tokenStatusCallback);
 
-    //Begin the access token generation for Google API authentication
+    // Begin the access token generation for Google API authentication
     GSheet.begin(CLIENT_EMAIL, PROJECT_ID, PRIVATE_KEY);
 }
 
 void loop()
 {
-    //Call ready() repeatedly in loop for authentication checking and processing
+    // Call ready() repeatedly in loop for authentication checking and processing
     bool ready = GSheet.ready();
 
     if (ready && !taskComplete)
     {
-        //For basic FirebaseJson usage example, see examples/FirebaseJson/Create_Edit_Parse/Create_Edit_Parse.ino
+        // For basic FirebaseJson usage example, see examples/FirebaseJson/Create_Edit_Parse/Create_Edit_Parse.ino
 
         FirebaseJson response;
+        // Instead of using FirebaseJson for response, you can use String for response to the functions
+        // especially in low memory device that deserializing large JSON response may be failed as in ESP8266
 
         Serial.println("Get spreadsheet...");
         Serial.println("------------------------");
 
-        //For Google Sheet API ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/get
+        // For Google Sheet API ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/get
 
         bool success = GSheet.get(&response /* returned response */, "<spreadsheetId>" /* spreadsheet Id to request */);
         response.toString(Serial, true);
@@ -96,9 +98,10 @@ void loop()
         dataFilters1.add("a1Range", "Sheet1!A1:A3");
         dataFiltersArr.add(dataFilters1);
 
-        //For Google Sheet API ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/getByDataFilter
+        // For Google Sheet API ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/getByDataFilter
 
         success = GSheet.getByDataFilter(&response /* returned response */, "<spreadsheetId>" /* spreadsheet Id to request */, &dataFiltersArr /* array of data range to request by filter */, "true" /* include grid data */);
+
         response.toString(Serial, true);
         Serial.println();
 

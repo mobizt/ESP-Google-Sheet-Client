@@ -1,16 +1,16 @@
 
 /**
  * Created by K. Suwatchai (Mobizt)
- * 
+ *
  * Email: suwatchai@outlook.com
- * 
+ *
  * Github: https://github.com/mobizt
- * 
+ *
  * Copyright (c) 2021 mobizt
  *
-*/
+ */
 
-//This example shows how to list spreadsheet in Google Drive.
+// This example shows how to list spreadsheet in Google Drive.
 
 #include <Arduino.h>
 #if defined(ESP8266)
@@ -23,14 +23,14 @@
 #define WIFI_SSID "WIFI_AP"
 #define WIFI_PASSWORD "WIFI_PASSWORD"
 
-//For how to create Service Account and how to use the library, go to https://github.com/mobizt/ESP-Google-Sheet-Client
+// For how to create Service Account and how to use the library, go to https://github.com/mobizt/ESP-Google-Sheet-Client
 
 #define PROJECT_ID "PROJECT_ID"
 
-//Service Account's client email
+// Service Account's client email
 #define CLIENT_EMAIL "CLIENT_EMAIL"
 
-//Service Account's private key
+// Service Account's private key
 const char PRIVATE_KEY[] PROGMEM = "-----BEGIN PRIVATE KEY-----XXXXXXXXXXXX-----END PRIVATE KEY-----\n";
 
 bool taskComplete = false;
@@ -60,23 +60,25 @@ void setup()
     Serial.println(WiFi.localIP());
     Serial.println();
 
-    //Set the callback for Google API access token generation status (for debug only)
+    // Set the callback for Google API access token generation status (for debug only)
     GSheet.setTokenCallback(tokenStatusCallback);
 
-    //Begin the access token generation for Google API authentication
+    // Begin the access token generation for Google API authentication
     GSheet.begin(CLIENT_EMAIL, PROJECT_ID, PRIVATE_KEY);
 }
 
 void loop()
 {
-    //Call ready() repeatedly in loop for authentication checking and processing
+    // Call ready() repeatedly in loop for authentication checking and processing
     bool ready = GSheet.ready();
 
     if (ready && !taskComplete)
     {
-        //For basic FirebaseJson usage example, see examples/FirebaseJson/Create_Edit_Parse/Create_Edit_Parse.ino
+        // For basic FirebaseJson usage example, see examples/FirebaseJson/Create_Edit_Parse/Create_Edit_Parse.ino
 
         FirebaseJson response;
+        // Instead of using FirebaseJson for response, you can use String for response to the functions
+        // especially in low memory device that deserializing large JSON response may be failed as in ESP8266
 
         Serial.println("\nList spreadsheet in Google Drive...");
         Serial.println("------------------------------------");

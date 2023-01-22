@@ -1,4 +1,4 @@
-#ifndef GS_HELPER_H)
+#ifndef GS_HELPER_H
 #define GS_HELPER_H
 
 #include "ESP_Google_Sheet_Client_FS_Config.h"

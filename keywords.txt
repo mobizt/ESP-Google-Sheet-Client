@@ -46,7 +46,10 @@ sdBegin KEYWORD2
 sdMMCBegin  KEYWORD2
 setCert KEYWORD2
 setCertFile KEYWORD2
-
+setExternalClient   KEYWORD2
+setUDPClient    KEYWORD2
+addAP   KEYWORD2
+clearAP KEYWORD2
 
 ######################
 # Constants (LITERAL1)

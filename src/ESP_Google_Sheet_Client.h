@@ -1,13 +1,13 @@
 #ifndef ESP_GOOGLE_SHEET_CLIENT_VERSION
-#define ESP_GOOGLE_SHEET_CLIENT_VERSION "1.2.0"
+#define ESP_GOOGLE_SHEET_CLIENT_VERSION "1.3.0"
 #endif
 
 /**
- * Google Sheet Client, ESP_Google_Sheet_Client.h v1.2.0
+ * Google Sheet Client, ESP_Google_Sheet_Client.h v1.3.0
  *
  * This library supports Espressif ESP8266 and ESP32 MCUs
  *
- * Created November 17, 2022
+ * Created January 22, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -36,7 +36,7 @@
 #ifndef ESP_Google_Sheet_Client_H
 #define ESP_Google_Sheet_Client_H
 
-#include "lib/ESPSigner/ESPSigner.h"
+#include "auth/GAUthManager.h"
 
 enum esp_google_sheet_file_storage_type
 {
@@ -44,7 +44,7 @@ enum esp_google_sheet_file_storage_type
     esP_google_sheet_file_storage_type_sd
 };
 
-class GSheetClass : public ESP_Signer
+class GSheetClass
 {
     friend class ESP_Google_Sheet_Client;
     friend class GSheet_Values;
@@ -70,14 +70,22 @@ private:
         host_type_drive
     };
 
-    SignerConfig config;
+    gauth_cfg_t config;
+    GAuthManager authMan;
+    MB_FS mbfs;
+    uint32_t mb_ts = 0;
+    uint32_t mb_ts_offset = 0;
+    int response_code = 0;
+
     int cert_addr = 0;
     bool cert_updated = false;
     MB_String certFile;
     esp_google_sheet_file_storage_type certFileStorageType;
 
-    void auth(const char *client_email, const char *project_id, const char *private_key);
+    void auth(const char *client_email, const char *project_id, const char *private_key, ESP8266_SPI_ETH_MODULE *eth = nullptr);
     void setTokenCallback(TokenStatusCallback callback);
+    void addAP(const char *ssid, const char *password);
+    void clearAP();
     bool checkToken();
     bool isError(MB_String &response);
     bool get(MB_String &response, const char *spreadsheetId, const char *range);
@@ -100,7 +108,7 @@ private:
     bool getSpreadsheetByDataFilter(MB_String &response, const char *spreadsheetId, FirebaseJsonArray *dataFiltersArray, const char *includeGridData = "");
     bool deleteFiles(MB_String &response);
     bool listFiles(MB_String &response, uint32_t pageSize = 5, const char *orderBy = "", const char *pageToken = "");
-    void beginRequest(MB_String &req, host_type_t host_type);
+    bool beginRequest(MB_String &req, host_type_t host_type);
     void addHeader(MB_String &req, host_type_t host_type, int len = -1);
     bool processRequest(MB_String &req, MB_String &response, int &httpcode);
     void mUpdateInit(FirebaseJson *js, FirebaseJsonArray *rangeArr, const char *valueInputOption, const char *includeValuesInResponse, const char *responseValueRenderOption, const char *responseDateTimeRenderOption);
@@ -110,9 +118,18 @@ private:
     MB_String mGetValue(MB_String &response, const char *key);
     bool createPermission(MB_String &response, const char *fileId, const char *role, const char *type, const char *email);
     bool setClock(float gmtOffset);
-    void setSecure();
+#if defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
+    void setClient(Client *client, GS_NetworkConnectionRequestCallback networkConnectionCB,
+                   GS_NetworkStatusRequestCallback networkStatusCB);
+    void setUDPClient(UDP *client, float gmtOffset = 0);
+#endif
+    bool setSecure();
     void setCert(const char *ca);
     void setCertFile(const char *filename, esp_google_sheet_file_storage_type type);
+    void setAuthToken(const String &authToken, size_t expire,
+                      const String &refreshToken, gauth_auth_token_type type,
+                      const String &clientId, const String &clientSecret);
+    void reset();
 };
 
 class GSheet_Values
@@ -1386,12 +1403,12 @@ public:
      *
      */
     template <typename T1 = const char *, typename T2 = const char *, typename T3 = const char *>
-    void begin(T1 client_email, T2 project_id, T3 private_key)
+    void begin(T1 client_email, T2 project_id, T3 private_key, ESP8266_SPI_ETH_MODULE *eth = nullptr)
     {
         values.init(gsheet);
         sheets.init(gsheet);
         developerMetadata.init(gsheet);
-        gsheet->auth(toString(client_email), toString(project_id), toString(private_key));
+        gsheet->auth(toString(client_email), toString(project_id), toString(private_key), eth);
     }
 
     /** Set the Root certificate data for server authorization.
@@ -1404,7 +1421,7 @@ public:
      * @param storageType The storage type of certificate file. esp_google_sheet_file_storage_type_flash or esp_google_sheet_file_storage_type_sd
      */
     template <typename T = const char *>
-    void setCertFile(T filename, esp_google_sheet_file_storage_type storageType) { gsheet->setCertFile(toString(filename, storageType)); }
+    void setCertFile(T filename, esp_google_sheet_file_storage_type storageType) { gsheet->setCertFile(toString(filename), storageType); }
 
     /** Set the OAuth2.0 token generation status callback.
      *
@@ -1414,6 +1431,60 @@ public:
     void setTokenCallback(TokenStatusCallback callback)
     {
         gsheet->setTokenCallback(callback);
+    }
+
+    /** Add the WiFi Access point credentials for connection resume (non-ESP device only).
+     *
+     * @param ssid The access point ssid.
+     * @param password The access point password.
+     *
+     */
+    template <typename T1 = const char *, typename T2 = const char *>
+    void addAP(T1 ssid, T2 password)
+    {
+        gsheet->addAP(toString(ssid), toString(password));
+    }
+
+    /** Clear all WiFi Access points credentials (non-ESP device only).
+     *
+     */
+    void clearAP()
+    {
+        gsheet->clearAP();
+    }
+
+    /** Assign external Arduino Client and required callback fumctions.
+     *
+     * @param client The pointer to Arduino Client derived class of SSL Client.
+     * @param networkConnectionCB The function that handles the network connection.
+     * @param networkStatusCB The function that handle the network connection status acknowledgement.
+     */
+    void setExternalClient(Client *client, GS_NetworkConnectionRequestCallback networkConnectionCB,
+                           GS_NetworkStatusRequestCallback networkStatusCB)
+    {
+#if defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
+        gsheet->setClient(client, networkConnectionCB, networkStatusCB);
+#endif
+    }
+
+    /** Assign UDP client and gmt offset for NTP time synching when using external SSL client
+     * @param client The pointer to UDP client based on the network type.
+     * @param gmtOffset The GMT time offset.
+     */
+    void setUDPClient(UDP *client, float gmtOffset = 0)
+    {
+#if defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
+        gsheet->setUDPClient(client, gmtOffset);
+#endif
+    }
+
+    /** Set the network status acknowledgement.
+     *
+     * @param status The network status.
+     */
+    void setNetworkStatus(bool status)
+    {
+        gsheet->authMan.tcpClient->setNetworkStatus(status);
     }
 
     /** Get the authentication ready status and process the authentication.
@@ -1427,22 +1498,14 @@ public:
     }
 
     /**
-     * Get the generated access token.
-     *
-     * @return String of OAuth2.0 access token.
-     *
-     */
-    String accessToken() { return gsheet->accessToken(); }
-
-    /**
      * Get the token type string.
      *
      * @param info The TokenInfo structured data contains token info.
      * @return token type String.
      *
      */
-    String getTokenType() { return gsheet->getTokenType(); }
-    String getTokenType(TokenInfo info) { return gsheet->getTokenType(info); }
+    String getTokenType() { return gsheet->authMan.getTokenType(); }
+    String getTokenType(TokenInfo info) { return gsheet->authMan.getTokenType(info); }
 
     /**
      * Get the token status string.
@@ -1451,8 +1514,8 @@ public:
      * @return token status String.
      *
      */
-    String getTokenStatus() { return gsheet->getTokenStatus(); }
-    String getTokenStatus(TokenInfo info) { return gsheet->getTokenStatus(info); }
+    String getTokenStatus() { return gsheet->authMan.getTokenStatus(); }
+    String getTokenStatus(TokenInfo info) { return gsheet->authMan.getTokenStatus(info); }
 
     /**
      * Get the token generation error string.
@@ -1461,8 +1524,8 @@ public:
      * @return token generation error String.
      *
      */
-    String getTokenError() { return gsheet->getTokenError(); }
-    String getTokenError(TokenInfo info) { return gsheet->getTokenError(info); }
+    String getTokenError() { return gsheet->authMan.getTokenError(); }
+    String getTokenError(TokenInfo info) { return gsheet->authMan.getTokenError(info); }
 
     /**
      * Get the token expiration timestamp (seconds from midnight Jan 1, 1970).
@@ -1470,7 +1533,20 @@ public:
      * @return timestamp.
      *
      */
-    unsigned long getExpiredTimestamp() { return gsheet->getExpiredTimestamp(); }
+    unsigned long getExpiredTimestamp() { return gsheet->authMan.getExpiredTimestamp(); }
+
+    /**
+     * Get error reason from last operation.
+     *
+     * @return error String.
+     *
+     */
+    String errorReason()
+    {
+        MB_String buf;
+        gsheet->authMan.errorToString(gsheet->authMan.response_code, buf);
+        return buf.c_str();
+    }
 
     /** Applies one or more updates to the spreadsheet.
      *
@@ -1553,7 +1629,7 @@ public:
         MB_String _response;
 
         bool ret = gsheet->create(_response, spreadsheet, toString(sharedUserEmail));
-        
+
         if (ret)
         {
 
@@ -1885,24 +1961,93 @@ public:
         return ret;
     }
 
-    /** SD card config with GPIO pins.
+#if defined(MBFS_SD_FS) && defined(MBFS_CARD_TYPE_SD)
+
+    /** Initiate SD card with SPI port configuration.
      *
-     * @param ss -   SPI Chip/Slave Select pin.
-     * @param sck -  SPI Clock pin.
-     * @param miso - SPI MISO pin.
-     * @param mosi - SPI MOSI pin.
+     * @param ss SPI Chip/Slave Select pin.
+     * @param sck SPI Clock pin.
+     * @param miso SPI MISO pin.
+     * @param mosi SPI MOSI pin.
+     * @param frequency The SPI frequency
      * @return Boolean type status indicates the success of the operation.
      */
-    bool sdBegin(int8_t ss = -1, int8_t sck = -1, int8_t miso = -1, int8_t mosi = -1) { return gsheet->sdBegin(ss, sck, miso, mosi); }
+    bool sdBegin(int8_t ss = -1, int8_t sck = -1, int8_t miso = -1, int8_t mosi = -1, uint32_t frequency = 4000000)
+    {
+        return gsheet->mbfs.sdBegin(ss, sck, miso, mosi, frequency);
+    }
 
+#if defined(ESP8266)
+
+    /** Initiate SD card with SD FS configurations (ESP8266 only).
+     *
+     * @param ss SPI Chip/Slave Select pin.
+     * @param sdFSConfig The pointer to SDFSConfig object (ESP8266 only).
+     * @return Boolean type status indicates the success of the operation.
+     */
+    bool sdBegin(SDFSConfig *sdFSConfig)
+    {
+        return gsheet->mbfs.sdFatBegin(sdFSConfig);
+    }
+
+#endif
+
+#if defined(ESP32)
+    /** Initiate SD card with chip select and SPI configuration (ESP32 only).
+     *
+     * @param ss SPI Chip/Slave Select pin.
+     * @param spiConfig The pointer to SPIClass object for SPI configuartion.
+     * @param frequency The SPI frequency.
+     * @return Boolean type status indicates the success of the operation.
+     */
+    bool sdBegin(int8_t ss, SPIClass *spiConfig = nullptr, uint32_t frequency = 4000000)
+    {
+        return gsheet->mbfs.sdSPIBegin(ss, spiConfig, frequency);
+    }
+#endif
+
+#if defined(MBFS_ESP32_SDFAT_ENABLED) || defined(MBFS_SDFAT_ENABLED)
+    /** Initiate SD card with SdFat SPI and pins configurations (with SdFat included only).
+     *
+     * @param sdFatSPIConfig The pointer to SdSpiConfig object for SdFat SPI configuration.
+     * @param ss SPI Chip/Slave Select pin.
+     * @param sck SPI Clock pin.
+     * @param miso SPI MISO pin.
+     * @param mosi SPI MOSI pin.
+     * @return Boolean type status indicates the success of the operation.
+     */
+    bool sdBegin(SdSpiConfig *sdFatSPIConfig, int8_t ss = -1, int8_t sck = -1, int8_t miso = -1, int8_t mosi = -1)
+    {
+        return gsheet->mbfs.sdFatBegin(sdFatSPIConfig, ss, sck, miso, mosi);
+    }
+
+    /** Initiate SD card with SdFat SDIO configuration (with SdFat included only).
+     *
+     * @param sdFatSDIOConfig The pointer to SdioConfig object for SdFat SDIO configuration.
+     * @return Boolean type status indicates the success of the operation.
+     */
+    bool sdBegin(SdioConfig *sdFatSDIOConfig)
+    {
+        return gsheet->mbfs.sdFatBegin(sdFatSDIOConfig);
+    }
+
+#endif
+
+#endif
+
+#if defined(ESP32) && defined(MBFS_SD_FS) && defined(MBFS_CARD_TYPE_SD_MMC)
     /** Initialize the SD_MMC card (ESP32 only).
+     *
      * @param mountpoint The mounting point.
      * @param mode1bit Allow 1 bit data line (SPI mode).
      * @param format_if_mount_failed Format SD_MMC card if mount failed.
      * @return The boolean value indicates the success of operation.
      */
-    template <typename T = const char *>
-    bool sdMMCBegin(T mountpoint = "/sdcard", bool mode1bit = false, bool format_if_mount_failed = false) { return gsheet->sdMMCBegin(toString(mountpoint), mode1bit, format_if_mount_failed); }
+    bool sdMMCBegin(const char *mountpoint = "/sdcard", bool mode1bit = false, bool format_if_mount_failed = false)
+    {
+        return gsheet->mbfs.sdMMCBegin(mountpoint, mode1bit, format_if_mount_failed);
+    }
+#endif
 
     GSheet_Values values;
     GSheet_Sheets sheets;

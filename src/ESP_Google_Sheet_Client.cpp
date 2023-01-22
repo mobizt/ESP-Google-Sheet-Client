@@ -1,9 +1,9 @@
 /**
- * Google Sheet Client, ESP_Google_Sheet_Client.cpp v1.2.0
+ * Google Sheet Client, GS_Google_Sheet_Client.cpp v1.3.0
  *
  * This library supports Espressif ESP8266 and ESP32 MCUs
  *
- * Created November 17, 2022
+ * Created January 22, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -34,32 +34,70 @@
 
 GSheetClass::GSheetClass()
 {
+    authMan.begin(&config, &mbfs, &mb_ts, &mb_ts_offset);
+    authMan.newClient(&authMan.tcpClient);
 }
 
 GSheetClass::~GSheetClass()
 {
-    if (config.signer.wcs)
-        delete config.signer.wcs;
-    if (config.signer.json)
-        delete config.signer.json;
-    if (config.signer.result)
-        delete config.signer.result;
-
-    config.signer.wcs = NULL;
-    config.signer.json = NULL;
-    config.signer.result = NULL;
+    authMan.end();
 }
 
-void GSheetClass::auth(const char *client_email, const char *project_id, const char *private_key)
+void GSheetClass::auth(const char *client_email, const char *project_id, const char *private_key, ESP8266_SPI_ETH_MODULE *eth)
 {
     config.service_account.data.client_email = client_email;
     config.service_account.data.project_id = project_id;
     config.service_account.data.private_key = private_key;
     config.signer.expiredSeconds = 3600;
     config.signer.preRefreshSeconds = 60;
-    config.internal.esp_signer_reconnect_wifi = WiFi.getAutoReconnect();
-    config.signer.tokens.scope = (const char *)FPSTR("https://www.googleapis.com/auth/drive.metadata,https://www.googleapis.com/auth/drive.appdata,https://www.googleapis.com/auth/spreadsheets,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/drive.file");
-    this->begin(&config);
+    if (eth)
+    {
+#if defined(ESP8266) && defined(ESP8266_CORE_SDK_V3_X_X)
+#ifdef INC_ENC28J60_LWIP
+        config.spi_ethernet_module.enc28j60 = eth;
+#endif
+#ifdef INC_W5100_LWIP
+        config.spi_ethernet_module.w5100 = eth;
+#endif
+#ifdef INC_W5500_LWIP
+        config.spi_ethernet_module.w5500 = eth;
+#endif
+#endif
+    }
+
+#if defined(ESP32) || defined(ESP8266)
+    config.internal.reconnect_wifi = WiFi.getAutoReconnect();
+#endif
+    config.signer.tokens.token_type = token_type_oauth2_access_token;
+
+    gauth_auth_token_type type = config.signer.tokens.token_type;
+
+    bool atoken_set = config.signer.accessTokenCustomSet;
+    uint32_t exp = config.signer.tokens.expires;
+
+    authMan.checkAuthTypeChanged(&config);
+
+    if (config.internal.rtoken_requested || atoken_set)
+        config.signer.tokens.token_type = type;
+
+    if (atoken_set)
+    {
+        config.signer.accessTokenCustomSet = atoken_set;
+        config.signer.tokens.expires = exp;
+    }
+
+    if (config.internal.rtoken_requested)
+    {
+        if (config.signer.tokens.token_type == token_type_oauth2_access_token)
+            authMan.requestTokens(true);
+        else
+            authMan.refreshToken();
+
+        config.internal.rtoken_requested = false;
+        return;
+    }
+
+    authMan.begin(&config, &mbfs, &mb_ts, &mb_ts_offset);
 }
 
 void GSheetClass::setTokenCallback(TokenStatusCallback callback)
@@ -67,65 +105,68 @@ void GSheetClass::setTokenCallback(TokenStatusCallback callback)
     config.token_status_callback = callback;
 }
 
+void GSheetClass::addAP(const char *ssid, const char *password)
+{
+    gs_wifi_credential_t cred;
+    cred.ssid = ssid;
+    cred.password = password;
+    config.wifi.credentials.push_back(cred);
+}
+
+void GSheetClass::clearAP()
+{
+    config.wifi.credentials.clear();
+}
+
 bool GSheetClass::checkToken()
 {
-    return this->tokenReady();
+    return authMan.tokenReady();
 }
 
 bool GSheetClass::setClock(float gmtOffset)
 {
-
-    if (time(nullptr) > ESP_DEFAULT_TS && gmtOffset == config.internal.esp_signer_gmt_offset)
-        return true;
-
-    time_t now = time(nullptr);
-
-    config.internal.esp_signer_clock_rdy = now > ESP_DEFAULT_TS;
-
-    if (!config.internal.esp_signer_clock_rdy || gmtOffset != config.internal.esp_signer_gmt_offset)
-    {
-        configTime(gmtOffset * 3600, 0, "pool.ntp.org", "time.nist.gov");
-
-        now = time(nullptr);
-        unsigned long timeout = millis();
-        while (now < ESP_DEFAULT_TS)
-        {
-            now = time(nullptr);
-            if (now > ESP_DEFAULT_TS || millis() - timeout > 1000)
-                break;
-            delay(10);
-        }
-    }
-
-    config.internal.esp_signer_clock_rdy = now > ESP_DEFAULT_TS;
-    if (config.internal.esp_signer_clock_rdy)
-        config.internal.esp_signer_gmt_offset = gmtOffset;
-
-    return config.internal.esp_signer_clock_rdy;
+    return TimeHelper::syncClock(&authMan.ntpClient, &mb_ts, &mb_ts_offset, gmtOffset, &config);
 }
 
-void GSheetClass::beginRequest(MB_String &req, host_type_t host_type)
+#if defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
+void GSheetClass::setClient(Client *client, GS_NetworkConnectionRequestCallback networkConnectionCB,
+                            GS_NetworkStatusRequestCallback networkStatusCB)
 {
+    authMan.tcpClient->setClient(client, networkConnectionCB, networkStatusCB);
+    authMan.tcpClient->setCACert(nullptr);
+}
 
-    if (!config.signer.wcs)
-    {
-        config.signer.wcs = new ESP_SIGNER_TCP_Client();
-        config.signer.wcs->setCACert(nullptr);
-    }
-
-#if defined(ESP8266)
-    if (host_type == host_type_sheet)
-        ut->ethDNSWorkAround(&config.spi_ethernet_module, (const char *)FPSTR("sheets.googleapis.com"), 443);
-    else if (host_type == host_type_drive)
-        ut->ethDNSWorkAround(&config.spi_ethernet_module, (const char *)FPSTR("www.googleapis.com"), 443);
+void GSheetClass::setUDPClient(UDP *client, float gmtOffset)
+{
+    authMan.udp = client;
+    authMan.gmtOffset = gmtOffset;
+}
 #endif
 
-    if (host_type == host_type_sheet)
-        config.signer.wcs->begin((const char *)FPSTR("sheets.googleapis.com"), 443);
-    else if (host_type == host_type_drive)
-        config.signer.wcs->begin((const char *)FPSTR("www.googleapis.com"), 443);
+bool GSheetClass::beginRequest(MB_String &req, host_type_t host_type)
+{
+    GS_TCP_Client *client = authMan.tcpClient;
 
-    setSecure();
+    if (!setSecure())
+        return false;
+
+    if (client && !client->connected())
+    {
+
+#if defined(ESP8266) || defined(PICO_RP2040)
+        if (host_type == host_type_sheet)
+            client->ethDNSWorkAround(&config.spi_ethernet_module, (const char *)FPSTR("sheets.googleapis.com"), 443);
+        else if (host_type == host_type_drive)
+            client->ethDNSWorkAround(&config.spi_ethernet_module, (const char *)FPSTR("www.googleapis.com"), 443);
+#endif
+
+        if (host_type == host_type_sheet)
+            client->begin((const char *)FPSTR("sheets.googleapis.com"), 443, &response_code);
+        else if (host_type == host_type_drive)
+            client->begin((const char *)FPSTR("www.googleapis.com"), 443, &response_code);
+    }
+
+    return true;
 }
 
 void GSheetClass::addHeader(MB_String &req, host_type_t host_type, int len)
@@ -136,7 +177,7 @@ void GSheetClass::addHeader(MB_String &req, host_type_t host_type, int len)
     else if (host_type == host_type_drive)
         req += FPSTR("Host: www.googleapis.com\r\n");
     req += FPSTR("Authorization: Bearer ");
-    req += config.signer.tokens.access_token;
+    req += config.internal.auth_token;
     req += FPSTR("\r\n");
 
     if (len > -1)
@@ -171,66 +212,108 @@ void GSheetClass::setCertFile(const char *filename, esp_google_sheet_file_storag
     cert_updated = false;
 }
 
-void GSheetClass::setSecure()
+void GSheetClass::reset()
 {
-    if (!config.signer.wcs)
-        return;
+    config.internal.client_id.clear();
+    config.internal.client_secret.clear();
+    config.internal.auth_token.clear();
+    config.internal.last_jwt_generation_error_cb_millis = 0;
+    config.signer.tokens.expires = 0;
+    config.internal.rtoken_requested = false;
+    config.signer.accessTokenCustomSet = false;
 
-    config.signer.wcs->timeout = 5 * 1000;
+    config.internal.priv_key_crc = 0;
+    config.internal.email_crc = 0;
+    config.internal.password_crc = 0;
 
-    if (config.signer.wcs->_certType == -1 || cert_updated)
+    config.signer.tokens.status = token_status_uninitialized;
+}
+
+bool GSheetClass::setSecure()
+{
+    GS_TCP_Client *client = authMan.tcpClient;
+
+    if (!client)
+        return false;
+
+    client->setConfig(&config, &mbfs);
+
+    if (!authMan.reconnect(client))
+        return false;
+
+#if (defined(ESP8266) || defined(PICO_RP2040))
+    if (TimeHelper::getTime(&mb_ts, &mb_ts_offset) > GS_DEFAULT_TS)
+    {
+        config.internal.clock_rdy = true;
+        client->setClockStatus(true);
+    }
+#endif
+
+    if (client->getCertType() == gs_cert_type_undefined || cert_updated)
     {
 
-        if (!config.internal.esp_signer_clock_rdy && (cert_addr > 0))
+        if (!config.internal.clock_rdy && (config.cert.file.length() > 0 || config.cert.data != NULL || cert_addr > 0))
+            TimeHelper::syncClock(&authMan.ntpClient, &mb_ts, &mb_ts_offset, config.internal.gmt_offset, &config);
+
+        if (config.cert.file.length() == 0)
         {
-
-#if defined(ESP8266)
-            setClock(0);
-#endif
-        }
-
-        config.signer.wcs->_clockReady = config.internal.esp_signer_clock_rdy;
-
-        if (certFile.length() > 0)
-        {
-
-#if defined(ESP8266)
-            if (config.internal.sd_config.ss == -1)
-                config.internal.sd_config.ss = SD_CS_PIN;
-#endif
-            int type = certFileStorageType == esP_google_sheet_file_storage_type_flash ? 1 : 2;
-            config.signer.wcs->setCACertFile(certFile.c_str(), type, config.internal.sd_config);
+            if (cert_addr > 0)
+                client->setCACert(reinterpret_cast<const char *>(cert_addr));
+            else if (config.cert.data != NULL)
+                client->setCACert(config.cert.data);
+            else
+                client->setCACert(NULL);
         }
         else
         {
-            if (cert_addr > 0)
-            {
-                config.signer.wcs->setCACert(reinterpret_cast<const char *>(cert_addr));
-            }
-            else
-                config.signer.wcs->setCACert(NULL);
+            if (!client->setCertFile(config.cert.file.c_str(), certFileStorageType == esP_google_sheet_file_storage_type_flash ? mb_fs_mem_storage_type_flash : mb_fs_mem_storage_type_sd))
+                client->setCACert(NULL);
         }
-
         cert_updated = false;
     }
+    return true;
 }
 
 bool GSheetClass::processRequest(MB_String &req, MB_String &response, int &httpcode)
 {
+    GS_TCP_Client *client = authMan.tcpClient;
 
-    int ret = config.signer.wcs->send(req.c_str());
+    if (!client)
+        return false;
+
+    authMan.response_code = 0;
+
+    int ret = client->send(req.c_str());
     req.clear();
-    config.signer.reuseSession = true;
+    config.signer.tokens.error.message.clear();
 
-    if (ret == 0)
+    if (ret > 0)
     {
-        if (this->handleServerResponse(httpcode, response))
-            ret = 1;
+        ret = authMan.handleResponse(client, httpcode, response, false);
+        if (!ret)
+        {
+            authMan.response_code = httpcode;
+            FirebaseJson json(response);
+            FirebaseJsonData result;
+            json.get(result, "error/message");
+            if(result.success)
+                config.signer.tokens.error.message = result.stringValue;
+            else
+                config.signer.tokens.error.message = response;
+            
+        }
     }
 
-    config.signer.reuseSession = false;
+    if (ret < 0)
+    {
+        authMan.response_code = ret;
+        httpcode = ret;
+    }
 
-    return ret;
+    if (!ret)
+        client->stop();
+
+    return ret > 0;
 }
 
 bool GSheetClass::mGet(MB_String &response, const char *spreadsheetId, const char *ranges, const char *majorDimension, const char *valueRenderOption, const char *dateTimeRenderOption, operation_type_t type)
@@ -241,7 +324,8 @@ bool GSheetClass::mGet(MB_String &response, const char *spreadsheetId, const cha
     MB_String req;
     int httpcode = 0;
 
-    beginRequest(req, host_type_sheet);
+    if (!beginRequest(req, host_type_sheet))
+        return false;
 
     if (type == operation_type_range)
     {
@@ -261,7 +345,7 @@ bool GSheetClass::mGet(MB_String &response, const char *spreadsheetId, const cha
 
         std::vector<MB_String> rngs = std::vector<MB_String>();
         MB_String rng = ranges;
-        ut->splitTk(rng, rngs, ",");
+        StringHelper::splitTk(rng, rngs, ",");
 
         if (rngs.size() == 0)
             return false;
@@ -321,19 +405,12 @@ bool GSheetClass::mGet(MB_String &response, const char *spreadsheetId, const cha
 
 bool GSheetClass::isError(MB_String &response)
 {
-    config.signer.json = new FirebaseJson();
+    authMan.initJson();
     bool ret = false;
-    if (config.signer.json->setJsonData(response))
-    {
-        config.signer.result = new FirebaseJsonData();
-        ret = parseJsonResponse(esp_signer_pgm_str_68) || parseJsonResponse(esp_signer_pgm_str_113);
-        delete config.signer.result;
-        config.signer.result = nullptr;
-    }
+    if (JsonHelper::setData(authMan.jsonPtr, response, false))
+        ret = JsonHelper::parse(authMan.jsonPtr, authMan.resultPtr, gauth_pgm_str_14) || JsonHelper::parse(authMan.jsonPtr, authMan.resultPtr, gauth_pgm_str_14);
 
-    delete config.signer.json;
-    config.signer.json = nullptr;
-
+    authMan.freeJson();
     return ret;
 }
 
@@ -427,13 +504,15 @@ void GSheetClass::mUpdateInit(FirebaseJson *js, FirebaseJsonArray *rangeArr, con
 
 bool GSheetClass::mUpdate(bool append, operation_type_t type, MB_String &response, const char *spreadsheetId, const char *range, FirebaseJson *valueRange, const char *valueInputOption, const char *insertDataOption, const char *includeValuesInResponse, const char *responseValueRenderOption, const char *responseDateTimeRenderOption)
 {
+
     if (!checkToken())
         return false;
 
     MB_String req;
     int httpcode = 0;
 
-    beginRequest(req, host_type_sheet);
+    if (!beginRequest(req, host_type_sheet))
+        return false;
 
     if (append || type == operation_type_batch || type == operation_type_filter)
         req = FPSTR("POST /v4/spreadsheets/");
@@ -523,7 +602,8 @@ bool GSheetClass::mClear(MB_String &response, const char *spreadsheetId, const c
     MB_String req;
     int httpcode = 0;
 
-    beginRequest(req, host_type_sheet);
+    if (!beginRequest(req, host_type_sheet))
+        return false;
 
     req = FPSTR("POST /v4/spreadsheets/");
     req += spreadsheetId;
@@ -548,7 +628,7 @@ bool GSheetClass::mClear(MB_String &response, const char *spreadsheetId, const c
                 req += FPSTR("/values:batchClear");
                 std::vector<MB_String> rngs = std::vector<MB_String>();
                 MB_String rng = ranges;
-                ut->splitTk(rng, rngs, ",");
+                StringHelper::splitTk(rng, rngs, ",");
 
                 if (rngs.size() == 0)
                     return false;
@@ -597,7 +677,8 @@ bool GSheetClass::copyTo(MB_String &response, const char *spreadsheetId, uint32_
     MB_String req;
     int httpcode = 0;
 
-    beginRequest(req, host_type_sheet);
+    if (!beginRequest(req, host_type_sheet))
+        return false;
 
     req = FPSTR("POST /v4/spreadsheets/");
     req += spreadsheetId;
@@ -627,7 +708,8 @@ bool GSheetClass::batchUpdate(MB_String &response, const char *spreadsheetId, Fi
     MB_String req;
     int httpcode = 0;
 
-    beginRequest(req, host_type_sheet);
+    if (!beginRequest(req, host_type_sheet))
+        return false;
 
     req = FPSTR("POST /v4/spreadsheets/");
     req += spreadsheetId;
@@ -660,7 +742,7 @@ bool GSheetClass::batchUpdate(MB_String &response, const char *spreadsheetId, Fi
         {
             std::vector<MB_String> rngs = std::vector<MB_String>();
             MB_String rng = responseRanges;
-            ut->splitTk(rng, rngs, ",");
+            StringHelper::splitTk(rng, rngs, ",");
 
             if (rngs.size() == 0)
                 return false;
@@ -697,7 +779,8 @@ bool GSheetClass::create(MB_String &response, FirebaseJson *spreadsheet, const c
     MB_String req;
     int httpcode = 0;
 
-    beginRequest(req, host_type_sheet);
+    if (!beginRequest(req, host_type_sheet))
+        return false;
 
     req = FPSTR("POST /v4/spreadsheets");
 
@@ -716,7 +799,8 @@ bool GSheetClass::getMetadata(MB_String &response, const char *spreadsheetId, ui
     MB_String req;
     int httpcode = 0;
 
-    beginRequest(req, host_type_sheet);
+    if (!beginRequest(req, host_type_sheet))
+        return false;
 
     req = FPSTR("GET /v4/spreadsheets/");
     req += spreadsheetId;
@@ -740,7 +824,8 @@ bool GSheetClass::searchMetadata(MB_String &response, const char *spreadsheetId,
         MB_String req;
         int httpcode = 0;
 
-        beginRequest(req, host_type_sheet);
+        if (!beginRequest(req, host_type_sheet))
+            return false;
 
         req = FPSTR("POST /v4/spreadsheets/");
         req += spreadsheetId;
@@ -769,7 +854,8 @@ bool GSheetClass::getSpreadsheet(MB_String &response, const char *spreadsheetId,
     MB_String req;
     int httpcode = 0;
 
-    beginRequest(req, host_type_drive);
+    if (!beginRequest(req, host_type_drive))
+        return false;
 
     req = FPSTR("GET /v4/spreadsheets/");
     req += spreadsheetId;
@@ -780,7 +866,7 @@ bool GSheetClass::getSpreadsheet(MB_String &response, const char *spreadsheetId,
     {
         std::vector<MB_String> rngs = std::vector<MB_String>();
         MB_String rng = ranges;
-        ut->splitTk(rng, rngs, ",");
+        StringHelper::splitTk(rng, rngs, ",");
 
         if (rngs.size() == 0)
             return false;
@@ -831,7 +917,8 @@ bool GSheetClass::getSpreadsheetByDataFilter(MB_String &response, const char *sp
         MB_String req;
         int httpcode = 0;
 
-        beginRequest(req, host_type_drive);
+        if (!beginRequest(req, host_type_drive))
+            return false;
 
         req = FPSTR("POST /v4/spreadsheets/");
         req += spreadsheetId;
@@ -860,17 +947,19 @@ bool GSheetClass::deleteFile(MB_String &response, const char *spreadsheetId, boo
     if (!checkToken())
         return false;
 
+    GS_TCP_Client *client = authMan.tcpClient;
+
+    if (!client)
+        return false;
+
     if (closeSession)
-    {
-        if (config.signer.wcs)
-            delete config.signer.wcs;
-        config.signer.wcs = NULL;
-    }
+        client->stop();
 
     MB_String req;
     int httpcode = 0;
 
-    beginRequest(req, host_type_drive);
+    if (!beginRequest(req, host_type_drive))
+        return false;
 
     req = FPSTR("DELETE /drive/v3/files/");
     req += spreadsheetId;
@@ -882,11 +971,7 @@ bool GSheetClass::deleteFile(MB_String &response, const char *spreadsheetId, boo
     processRequest(req, response, httpcode);
 
     if (closeSession)
-    {
-        if (config.signer.wcs)
-            delete config.signer.wcs;
-        config.signer.wcs = NULL;
-    }
+        client->stop();
 
     return httpcode == 204;
 }
@@ -945,9 +1030,10 @@ bool GSheetClass::listFiles(MB_String &response, uint32_t pageSize, const char *
     if (!checkToken())
         return false;
 
-    if (config.signer.wcs)
-        delete config.signer.wcs;
-    config.signer.wcs = NULL;
+    GS_TCP_Client *client = authMan.tcpClient;
+
+    if (!client)
+        return false;
 
     MB_String req;
     int httpcode = 0;
@@ -955,7 +1041,8 @@ bool GSheetClass::listFiles(MB_String &response, uint32_t pageSize, const char *
     if (pageSize == 0 || pageSize > 10)
         pageSize = 10;
 
-    beginRequest(req, host_type_drive);
+    if (!beginRequest(req, host_type_drive))
+        return false;
 
     req = FPSTR("GET /drive/v3/files?pageSize=");
     req += pageSize;
@@ -977,10 +1064,6 @@ bool GSheetClass::listFiles(MB_String &response, uint32_t pageSize, const char *
     req += FPSTR("\r\n");
 
     bool ret = processRequest(req, response, httpcode);
-
-    if (config.signer.wcs)
-        delete config.signer.wcs;
-    config.signer.wcs = NULL;
 
     return ret;
 }
@@ -1011,14 +1094,16 @@ MB_String GSheetClass::mGetValue(MB_String &response, const char *key)
 
 bool GSheetClass::createPermission(MB_String &response, const char *fileid, const char *role, const char *type, const char *email)
 {
-    if (config.signer.wcs)
-        delete config.signer.wcs;
-    config.signer.wcs = NULL;
+    GS_TCP_Client *client = authMan.tcpClient;
+
+    if (!client)
+        return false;
 
     MB_String req;
     int httpcode = 0;
 
-    beginRequest(req, host_type_drive);
+    if (!beginRequest(req, host_type_drive))
+        return false;
 
     req = FPSTR("POST /drive/v3/files/");
     req += fileid;
@@ -1038,10 +1123,6 @@ bool GSheetClass::createPermission(MB_String &response, const char *fileid, cons
     req += js.raw();
 
     bool ret = processRequest(req, response, httpcode);
-
-    if (config.signer.wcs)
-        delete config.signer.wcs;
-    config.signer.wcs = NULL;
 
     return ret;
 }

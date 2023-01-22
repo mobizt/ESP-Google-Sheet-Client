@@ -6,7 +6,7 @@
  * 
  * Github: https://github.com/mobizt
  * 
- * Copyright (c) 2021 mobizt
+ * Copyright (c) 2023 mobizt
  *
 */
 
@@ -30,7 +30,13 @@
 */
 
 #include <Arduino.h>
+#if defined(ESP8266)
+#include <ENC28J60lwIP.h>
+//#include <W5100lwIP.h>
+//#include <W5500lwIP.h>
+#endif
 #include <ESP_Google_Sheet_Client.h>
+#include <Ethernet.h>
 
 //For how to create Service Account and how to use the library, go to https://github.com/mobizt/ESP-Google-Sheet-Client
 
@@ -55,6 +61,9 @@ void tokenStatusCallback(TokenInfo info);
 ENC28J60lwIP eth(ETH_CS_PIN);
 //Wiznet5100lwIP eth(ETH_CS_PIN);
 //Wiznet5500lwIP eth(ETH_CS_PIN);
+
+// UDP Client for NTP Time synching
+EthernetUDP udpClient;
 
 
 void setup()
@@ -120,7 +129,7 @@ void setupGsheet()
     GSheet.setTokenCallback(tokenStatusCallback);
 
     //Begin the access token generation for Google API authentication
-    GSheet.begin(CLIENT_EMAIL, PROJECT_ID, PRIVATE_KEY);
+    GSheet.begin(CLIENT_EMAIL, PROJECT_ID, PRIVATE_KEY, &eth);
 
     gsheetSetupReady = true;
 }

@@ -6,17 +6,17 @@
  *
  * Github: https://github.com/mobizt
  *
- * Copyright (c) 2021 mobizt
+ * Copyright (c) 2023 mobizt
  *
  */
 
 // This example shows how to clear the spreadsheet's values.
 
 #include <Arduino.h>
-#if defined(ESP8266)
-#include <ESP8266WiFi.h>
-#elif defined(ESP32)
+#if defined(ESP32) || defined(PICO_RP2040)
 #include <WiFi.h>
+#elif defined(ESP8266)
+#include <ESP8266WiFi.h>
 #endif
 #include <ESP_Google_Sheet_Client.h>
 
@@ -35,6 +35,10 @@ const char PRIVATE_KEY[] PROGMEM = "-----BEGIN PRIVATE KEY-----XXXXXXXXXXXX-----
 
 bool taskComplete = false;
 
+#if defined(ARDUINO_RASPBERRY_PI_PICO_W)
+WiFiMulti multi;
+#endif
+
 void tokenStatusCallback(TokenInfo info);
 
 void setup()
@@ -46,14 +50,27 @@ void setup()
 
     Serial.printf("ESP Google Sheet Client v%s\n\n", ESP_GOOGLE_SHEET_CLIENT_VERSION);
 
+#if defined(ESP32) || defined(ESP8266)
     WiFi.setAutoReconnect(true);
+#endif
 
+#if defined(ARDUINO_RASPBERRY_PI_PICO_W)
+    multi.addAP(WIFI_SSID, WIFI_PASSWORD);
+    multi.run();
+#else
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+#endif
+
     Serial.print("Connecting to Wi-Fi");
+    unsigned long ms = millis();
     while (WiFi.status() != WL_CONNECTED)
     {
         Serial.print(".");
         delay(300);
+#if defined(ARDUINO_RASPBERRY_PI_PICO_W)
+        if (millis() - ms > 10000)
+            break;
+#endif
     }
     Serial.println();
     Serial.print("Connected with IP: ");
@@ -62,6 +79,13 @@ void setup()
 
     // Set the callback for Google API access token generation status (for debug only)
     GSheet.setTokenCallback(tokenStatusCallback);
+
+    // The WiFi credentials are required for Pico W
+    // due to it does not have reconnect feature.
+#if defined(ARDUINO_RASPBERRY_PI_PICO_W)
+    GSheet.clearAP();
+    GSheet.addAP(WIFI_SSID, WIFI_PASSWORD);
+#endif
 
     // Begin the access token generation for Google API authentication
     GSheet.begin(CLIENT_EMAIL, PROJECT_ID, PRIVATE_KEY);
@@ -144,8 +168,17 @@ void loop()
         // For Google Sheet API ref doc, go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/batchClearByDataFilter
 
         success = GSheet.values.batchClearByDataFilter(&response /* returned response */, "<spreadsheetId>" /* spreadsheet Id to clear */, &dataFiltersArr /* array of data range to read  with filter */);
-        response.toString(Serial, true);
+        if (success)
+            response.toString(Serial, true);
+        else
+            Serial.println(GSheet.errorReason());
         Serial.println();
+
+#if defined(ESP32) || defined(ESP8266)
+        Serial.println(ESP.getFreeHeap());
+#elif defined(PICO_RP2040)
+        Serial.println(rp2040.getFreeHeap());
+#endif
 
         taskComplete = true;
     }

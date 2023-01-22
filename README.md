@@ -1,7 +1,7 @@
-# Arduino Google Sheet Client Library for ESP8266 and ESP32
+# Arduino Google Sheet Client Library for ESP32, ESP8266 and Raspberry Pi Pico (RP2040)
 
 
-Arduino Google Sheet Client Library for ESP8266 and ESP32.
+Arduino Google Sheet Client Library for ESP32, ESP8266 and Raspberry Pi Pico (RP2040).
 
 This library allows devices to authenticate and communicate with Google Sheet APIs using the Service Account.
 
@@ -20,11 +20,32 @@ Spreadsheet created or owned by you, needed to share the access with Service Acc
 ## Dependencies
 
 
-This library required **ESP8266 or ESP32 Core SDK** to be installed.
+This library required **ESP8266, ESP32 and Raspberry Pi Pico Arduino Core SDK** to be installed.
 
-To install SDK, in Arduino IDE, ESP8266 Core SDK can be installed through **Boards Manager**. 
+To install device SDK, in Arduino IDE, ESP8266, ESP32 and Pico Core SDK can be installed through **Boards Manager**. 
 
-In PlatfoemIO IDE, ESP8266 Core SDK can be installed through **PIO Home** > **Platforms** > **Espressif 8266 or Espressif 32**.
+In PlatfoemIO IDE, ESP32 and ESP8266 devices's Core SDK can be installed through **PIO Home** > **Platforms** > **Espressif 8266 or Espressif 32**.
+
+
+### RP2040 Arduino SDK installation
+
+For Arduino IDE, the Arduino-Pico SDK can be installed from Boards Manager by searching pico and choose Raspberry Pi Pico/RP2040 to install.
+
+For PlatformIO, the Arduino-Pico SDK can be installed via platformio.ini
+
+```ini
+[env:rpipicow]
+platform = https://github.com/maxgerhardt/platform-raspberrypi.git
+board = rpipicow
+framework = arduino
+board_build.core = earlephilhower
+monitor_speed = 115200
+board_build.filesystem_size = 1m
+```
+
+See this Arduino-Pico SDK [documentation](https://arduino-pico.readthedocs.io/en/latest/) for more information.
+
+
 
 
 ## Prerequisites
@@ -173,7 +194,8 @@ See [all examples](/examples) for complete usages.
 
 ```cpp
 
-#if defined(ESP32)
+#include <Arduino.h>
+#if defined(ESP32) || defined(PICO_RP2040)
 #include <WiFi.h>
 #elif defined(ESP8266)
 #include <ESP8266WiFi.h>
@@ -194,6 +216,11 @@ const char PRIVATE_KEY[] PROGMEM = "-----BEGIN PRIVATE KEY-----XXXXXXXXXXXX-----
 
 bool taskComplete = false;
 
+// For Pico, WiFiMulti is recommended.
+#if defined(ARDUINO_RASPBERRY_PI_PICO_W)
+WiFiMulti multi;
+#endif
+
 void setup()
 {
 
@@ -201,19 +228,43 @@ void setup()
     Serial.println();
     Serial.println();
 
+    // Set auto reconnect WiFi or network connection
+#if defined(ESP32) || defined(ESP8266)
     WiFi.setAutoReconnect(true);
+#endif
 
+// Connect to WiFi or network
+#if defined(ARDUINO_RASPBERRY_PI_PICO_W)
+    multi.addAP(WIFI_SSID, WIFI_PASSWORD);
+    multi.run();
+#else
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+#endif
+
     Serial.print("Connecting to Wi-Fi");
+    unsigned long ms = millis();
     while (WiFi.status() != WL_CONNECTED)
     {
         Serial.print(".");
         delay(300);
+#if defined(ARDUINO_RASPBERRY_PI_PICO_W)
+        if (millis() - ms > 10000)
+            break;
+#endif
     }
     Serial.println();
     Serial.print("Connected with IP: ");
     Serial.println(WiFi.localIP());
     Serial.println();
+
+
+    // The WiFi credentials are required for Pico W
+    // due to it does not have reconnect feature.
+#if defined(ARDUINO_RASPBERRY_PI_PICO_W)
+    GSheet.clearAP();
+    GSheet.addAP(WIFI_SSID, WIFI_PASSWORD);
+    // You can add many WiFi credentials here
+#endif
 
     //Begin the access token generation for Google API authentication
     GSheet.begin(CLIENT_EMAIL, PROJECT_ID, PRIVATE_KEY);
@@ -412,6 +463,55 @@ param **`callback`** The callback function that accepts the TokenInfo as argumen
 ```cpp
 void setTokenCallback(TokenStatusCallback callback);
 ```
+
+#### Add the WiFi Access point credentials for connection resume (non-ESP device only).
+
+param **`param`** ssid The access point ssid.
+
+param **`param`** password The access point password.
+```cpp
+void addAP(T1 ssid, T2 password);
+```
+
+#### Clear all WiFi Access points credentials (non-ESP device only).
+
+```cpp
+void clearAP();
+```
+
+#### Assign external Arduino Client and required callback fumctions.
+
+param **`client`** The pointer to Arduino Client derived class of SSL Client.
+
+param **`networkConnectionCB`** The function that handles the network connection.
+
+param **`networkStatusCB`** The function that handle the network connection status acknowledgement.
+
+```cpp
+void setExternalClient(Client *client, GS_NetworkConnectionRequestCallback networkConnectionCB,
+                           GS_NetworkStatusRequestCallback networkStatusCB);
+```
+
+####  Assign UDP client and gmt offset for NTP time synching when using external SSL client
+
+param **`client`** The pointer to UDP client based on the network type.
+
+param **`gmtOffset`** The GMT time offset.
+
+```cpp
+void setUDPClient(UDP *client, float gmtOffset = 0);
+```
+
+####  Set the network status acknowledgement.
+
+param **`status`** The network status.
+
+```cpp
+void setNetworkStatus(bool status);
+```
+
+
+
 
 #### Set the Root certificate data for server authorization 
 
@@ -1310,7 +1410,7 @@ bool search(String *response, <string> spreadsheetId, FirebaseJsonArray *dataFil
 
 The MIT License (MIT)
 
-Copyright (C) 2022 K. Suwatchai (Mobizt)
+Copyright (C) 2023 K. Suwatchai (Mobizt)
 
 
 Permission is hereby granted, free of charge, to any person returning a copy of

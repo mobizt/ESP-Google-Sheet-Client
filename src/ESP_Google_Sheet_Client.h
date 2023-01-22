@@ -36,7 +36,7 @@
 #ifndef ESP_Google_Sheet_Client_H
 #define ESP_Google_Sheet_Client_H
 
-#include "auth/GAUthManager.h"
+#include "auth/GAuthManager.h"
 
 enum esp_google_sheet_file_storage_type
 {

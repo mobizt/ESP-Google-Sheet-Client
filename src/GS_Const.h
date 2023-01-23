@@ -25,6 +25,7 @@
 #define MIN_WIFI_RECONNECT_TIMEOUT 10 * 1000
 #define MAX_WIFI_RECONNECT_TIMEOUT 5 * 60 * 1000
 
+#include "ESP_Google_Sheet_Client_FS_Config.h"
 #include "mbfs/MB_FS.h"
 #include "auth/MB_NTP.h"
 #if defined(ESP32)

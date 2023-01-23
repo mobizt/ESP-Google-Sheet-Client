@@ -769,7 +769,7 @@ protected:
     }
 #else
     template <typename T>
-    auto toStringHandler(T &out, bool prettify) -> typename MB_ENABLE_IF<MB_IS_SAME<T, fs::File>::value, bool>::type
+    auto toStringHandler(T &out, bool prettify) -> typename MB_ENABLE_IF<MB_IS_SAME<T, File>::value, bool>::type
     {
         return writeStream(out, prettify);
     }

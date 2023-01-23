@@ -13,7 +13,7 @@
 // This example shows how to connect to Google API via ethernet using external SSL client
 // This example is for Raspberri Pi Pico and W5500 Ethernet module.
 
-// Plese don't forget to assign macro ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT 
+// Plese don't forget to assign macro ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT
 // in ESP_Google_Sheet_Client_FS_Config.h
 
 /**
@@ -166,8 +166,11 @@ void setupGsheet()
     /* Assign the pointer to global defined external SSL Client object and required callback functions */
     GSheet.setExternalClient(&ssl_client, networkConnection, networkStatusRequestCallback);
 
-     /* Assign UDP client and gmt offset for NTP time synching when using external SSL client */
+    /* Assign UDP client and gmt offset for NTP time synching when using external SSL client */
     GSheet.setUDPClient(&udpClient, 3);
+
+    // Set the seconds to refresh the auth token before expire (60 to 3540, default is 300 seconds)
+    GSheet.setPrerefreshSeconds(10 * 60);
 
     // Begin the access token generation for Google API authentication
     GSheet.begin(CLIENT_EMAIL, PROJECT_ID, PRIVATE_KEY);

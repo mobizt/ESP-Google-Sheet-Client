@@ -141,54 +141,6 @@ bool GAuthManager::serviceAccountCredsReady()
            config->service_account.data.project_id.length() > 0;
 }
 
-bool GAuthManager::checkAuthTypeChanged(gauth_cfg_t *config)
-{
-    bool auth_changed = false;
-
-    // service account file assigned?
-    if (config->service_account.json.path.length() > 0)
-    {
-        // parse for private key
-        if (!parseSAFile())
-            config->signer.tokens.status = token_status_uninitialized;
-    }
-
-    // set token type to oauth2 or custom token based on service account credentials
-    if (serviceAccountCredsReady())
-    {
-        config->signer.accessTokenCustomSet = false;
-        setTokenType(token_type_oauth2_access_token);
-    }
-
-    // check if service account credentials changed
-    if (config->signer.tokens.token_type == token_type_oauth2_access_token)
-    {
-        MB_String key = config->service_account.data.private_key;
-
-        uint16_t crc1 = Utils::calCRC(mbfs, config->service_account.data.client_email.c_str());
-        uint16_t crc2 = Utils::calCRC(mbfs, config->service_account.data.project_id.c_str());
-        uint16_t crc3 = Utils::calCRC(mbfs, key.c_str());
-
-        auth_changed = config->internal.client_email_crc != crc1 ||
-                       config->internal.project_id_crc != crc2 ||
-                       config->internal.priv_key_crc != crc3;
-
-        config->internal.client_email_crc = crc1;
-        config->internal.project_id_crc = crc2;
-        config->internal.priv_key_crc = crc3;
-    }
-
-    // reset token status and flags if auth type changed
-    if (auth_changed)
-    {
-        config->signer.tokens.status = token_status_uninitialized;
-        config->signer.tokens.expires = 0;
-        config->signer.accessTokenCustomSet = false;
-    }
-
-    return auth_changed;
-}
-
 void GAuthManager::setTokenType(gauth_auth_token_type type)
 {
     if (!config)
@@ -330,14 +282,6 @@ bool GAuthManager::handleToken()
     bool exp = isExpired();
 
     // Handle user assigned tokens (access tokens)
-
-    // if access token was set and unexpired, set the ready status
-    if (config->signer.accessTokenCustomSet && !exp)
-    {
-        config->signer.tokens.auth_type = gauth_pgm_str_45; // "Bearer "
-        config->signer.tokens.status = token_status_ready;
-        return true;
-    }
 
     // Handle the signed jwt token generation, request and refresh the token
 
@@ -601,16 +545,6 @@ bool GAuthManager::refreshToken()
 
         if (error.code == 0)
         {
-
-            if (JsonHelper::parse(jsonPtr, resultPtr, gauth_pgm_str_16 /* "id_token" */))
-            {
-                config->internal.auth_token = resultPtr->to<const char *>();
-            }
-
-            if (JsonHelper::parse(jsonPtr, resultPtr, gauth_pgm_str_10 /* "refresh_token" */))
-            {
-                config->internal.refresh_token = resultPtr->to<const char *>();
-            }
 
             if (JsonHelper::parse(jsonPtr, resultPtr, gauth_pgm_str_19 /* "expires_in" */))
                 getExpiration(resultPtr->to<const char *>());
@@ -1321,6 +1255,46 @@ String GAuthManager::getTokenError(TokenInfo info)
     return s.c_str();
 }
 
+void GAuthManager::reset()
+{
+    if (config)
+    {
+        config->internal.client_id.clear();
+        config->internal.client_secret.clear();
+        config->internal.auth_token.clear();
+        config->internal.refresh_token.clear();
+        config->signer.lastReqMillis = 0;
+        config->internal.last_jwt_generation_error_cb_millis = 0;
+        config->signer.tokens.expires = 0;
+        config->internal.rtoken_requested = false;
+
+        config->internal.client_email_crc = 0;
+        config->internal.project_id_crc = 0;
+        config->internal.priv_key_crc = 0;
+        config->internal.email_crc = 0;
+        config->internal.password_crc = 0;
+
+        config->signer.tokens.status = token_status_uninitialized;
+    }
+}
+
+void GAuthManager::refresh()
+{
+    if (config)
+    {
+        config->signer.lastReqMillis = 0;
+        config->signer.tokens.expires = 0;
+
+        if (config)
+        {
+            config->internal.rtoken_requested = false;
+            this->requestTokens(true);
+        }
+        else
+            config->internal.rtoken_requested = true;
+    }
+}
+
 String GAuthManager::getTokenError()
 {
     return getTokenError(tokenInfo);
@@ -1433,7 +1407,7 @@ void GAuthManager::errorToString(int httpCode, MB_String &buff)
     buff.clear();
 
     if (&config->signer.tokens.error.message != &buff &&
-        (response_code  > 200 || config->signer.tokens.status == token_status_error || config->signer.tokens.error.code != 0))
+        (response_code > 200 || config->signer.tokens.status == token_status_error || config->signer.tokens.error.code != 0))
     {
         buff = config->signer.tokens.error.message;
         return;

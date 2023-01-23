@@ -50,6 +50,9 @@ setExternalClient   KEYWORD2
 setUDPClient    KEYWORD2
 addAP   KEYWORD2
 clearAP KEYWORD2
+setPrerefreshSeconds    KEYWORD2
+refreshToken    KEYWORD2
+reset   KEYWORD2
 
 ######################
 # Constants (LITERAL1)

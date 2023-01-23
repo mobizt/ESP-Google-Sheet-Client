@@ -87,6 +87,8 @@ private:
     void addAP(const char *ssid, const char *password);
     void clearAP();
     bool checkToken();
+    String accessToken();
+    void setPrerefreshSeconds(uint16_t seconds);
     bool isError(MB_String &response);
     bool get(MB_String &response, const char *spreadsheetId, const char *range);
     bool batchGet(MB_String &response, const char *spreadsheetId, const char *ranges, const char *majorDimension = "", const char *valueRenderOption = "", const char *dateTimeRenderOption = "");
@@ -1498,6 +1500,25 @@ public:
     }
 
     /**
+     * Get the generated access token.
+     *
+     * @return String of OAuth2.0 access token.
+     *
+     */
+    String accessToken() { return gsheet->accessToken(); }
+
+    /** Set the seconds to refesh auth token before it expires.
+     *
+     * @param seconds The seconds (60 sec to 3540 sec) that auth token will refresh before expired.
+     * Default value is 300 seconds.
+     *
+     */
+    void setPrerefreshSeconds(uint16_t seconds)
+    {
+        gsheet->setPrerefreshSeconds(seconds);
+    }
+
+    /**
      * Get the token type string.
      *
      * @param info The TokenInfo structured data contains token info.
@@ -1534,6 +1555,15 @@ public:
      *
      */
     unsigned long getExpiredTimestamp() { return gsheet->authMan.getExpiredTimestamp(); }
+
+    /** Force the token to expire immediately and refresh.
+     */
+    void refreshToken() { gsheet->authMan.refresh(); };
+
+    /** Reset stored config and auth credentials.
+     *
+     */
+    void reset() { gsheet->authMan.reset(); };
 
     /**
      * Get error reason from last operation.

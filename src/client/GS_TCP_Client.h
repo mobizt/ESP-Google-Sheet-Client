@@ -190,10 +190,12 @@ public:
   void setBufferSizes(int rx, int tx)
   {
 #if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
+#if defined(ESP_8266) || defined(PICO_RP2040)
     bsslRxSize = rx;
     bsslTxSize = tx;
     if (client)
       client->setBufferSizes(rx, tx);
+#endif
 #endif
   }
 

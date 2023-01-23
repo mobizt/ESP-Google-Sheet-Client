@@ -90,8 +90,12 @@ void setup()
     GSheet.addAP(WIFI_SSID, WIFI_PASSWORD);
 #endif
 
+    // Set the seconds to refresh the auth token before expire (60 to 3540, default is 300 seconds)
+    GSheet.setPrerefreshSeconds(10 * 60);
+
     // Begin the access token generation for Google API authentication
     GSheet.begin(CLIENT_EMAIL, PROJECT_ID, PRIVATE_KEY);
+
 }
 
 void loop()

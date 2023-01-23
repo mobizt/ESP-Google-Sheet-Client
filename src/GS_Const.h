@@ -215,7 +215,6 @@ typedef struct gauth_token_info_t
 struct gauth_token_signer_resources_t
 {
     int step = 0;
-    bool accessTokenCustomSet = false;
     bool tokenTaskRunning = false;
     /* last token request milliseconds count */
     unsigned long lastReqMillis = 0;
@@ -371,7 +370,7 @@ struct gauth_cfg_int_t
     unsigned long last_time_sync_millis = 0;
     unsigned long last_ntp_sync_timeout_millis = 0;
     bool clock_rdy = false;
-    uint16_t email_crc = 0, password_crc = 0, client_email_crc = 0, project_id_crc = 0, priv_key_crc = 0, uid_crc = 0;
+    uint16_t email_crc = 0, password_crc = 0, client_email_crc = 0, project_id_crc = 0, priv_key_crc = 0;
 
     /* flag set when NTP time server synching has been started */
     bool clock_synched = false;

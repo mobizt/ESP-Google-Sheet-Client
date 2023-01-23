@@ -107,12 +107,13 @@ private:
     void setAutoReconnectWiFi(bool reconnect);
 
     void setTokenType(gauth_auth_token_type type);
-    bool checkAuthTypeChanged(gauth_cfg_t *config);
     String getTokenType(TokenInfo info);
     String getTokenType();
     String getTokenStatus(TokenInfo info);
     String getTokenStatus();
     String getTokenError(TokenInfo info);
+    void reset();
+    void refresh();
     String getTokenError();
     unsigned long getExpiredTimestamp();
     bool reconnect(GS_TCP_Client *client, unsigned long dataTime = 0);

@@ -49,7 +49,6 @@ void GSheetClass::auth(const char *client_email, const char *project_id, const c
     config.service_account.data.project_id = project_id;
     config.service_account.data.private_key = private_key;
     config.signer.expiredSeconds = 3600;
-    config.signer.preRefreshSeconds = 60;
     if (eth)
     {
 #if defined(ESP8266) && defined(ESP8266_CORE_SDK_V3_X_X)
@@ -71,31 +70,6 @@ void GSheetClass::auth(const char *client_email, const char *project_id, const c
     config.signer.tokens.token_type = token_type_oauth2_access_token;
 
     gauth_auth_token_type type = config.signer.tokens.token_type;
-
-    bool atoken_set = config.signer.accessTokenCustomSet;
-    uint32_t exp = config.signer.tokens.expires;
-
-    authMan.checkAuthTypeChanged(&config);
-
-    if (config.internal.rtoken_requested || atoken_set)
-        config.signer.tokens.token_type = type;
-
-    if (atoken_set)
-    {
-        config.signer.accessTokenCustomSet = atoken_set;
-        config.signer.tokens.expires = exp;
-    }
-
-    if (config.internal.rtoken_requested)
-    {
-        if (config.signer.tokens.token_type == token_type_oauth2_access_token)
-            authMan.requestTokens(true);
-        else
-            authMan.refreshToken();
-
-        config.internal.rtoken_requested = false;
-        return;
-    }
 
     authMan.begin(&config, &mbfs, &mb_ts, &mb_ts_offset);
 }
@@ -121,6 +95,17 @@ void GSheetClass::clearAP()
 bool GSheetClass::checkToken()
 {
     return authMan.tokenReady();
+}
+
+String GSheetClass::accessToken()
+{
+    return config.internal.auth_token.c_str();
+}
+
+void GSheetClass::setPrerefreshSeconds(uint16_t seconds)
+{
+    if (seconds >= 60 || seconds <= 3540)
+        config.signer.preRefreshSeconds = seconds;
 }
 
 bool GSheetClass::setClock(float gmtOffset)
@@ -220,7 +205,6 @@ void GSheetClass::reset()
     config.internal.last_jwt_generation_error_cb_millis = 0;
     config.signer.tokens.expires = 0;
     config.internal.rtoken_requested = false;
-    config.signer.accessTokenCustomSet = false;
 
     config.internal.priv_key_crc = 0;
     config.internal.email_crc = 0;
@@ -296,11 +280,10 @@ bool GSheetClass::processRequest(MB_String &req, MB_String &response, int &httpc
             FirebaseJson json(response);
             FirebaseJsonData result;
             json.get(result, "error/message");
-            if(result.success)
+            if (result.success)
                 config.signer.tokens.error.message = result.stringValue;
             else
                 config.signer.tokens.error.message = response;
-            
         }
     }
 

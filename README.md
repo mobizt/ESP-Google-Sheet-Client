@@ -511,6 +511,16 @@ void setNetworkStatus(bool status);
 ```
 
 
+####  Set the seconds to refesh auth token before it expires.
+
+param **`seconds`** The seconds (60 sec to 3540 sec) that auth token will refresh before expired.
+
+Default value is 300 seconds.
+
+```cpp
+void setPrerefreshSeconds(uint16_t seconds);
+```
+
 
 
 #### Set the Root certificate data for server authorization 
@@ -598,6 +608,18 @@ retuen **`unsigned long`** of timestamp.
 unsigned long getExpiredTimestamp();
 ```
 
+#### Force the token to expire immediately and refresh.
+
+```cpp
+void refreshToken();
+```
+
+
+#### Reset stored config and auth credentials.
+
+```cpp
+void reset();
+```
 
 
 #### SD card config with GPIO pins.

@@ -18,6 +18,7 @@
  * #define DEFAULT_FLASH_FS FFat  //For ESP32 FAT
  *
  */
+
 #if defined(ESP32)
 #include <SPIFFS.h>
 #endif

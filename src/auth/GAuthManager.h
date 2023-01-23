@@ -2,6 +2,7 @@
 #define GAUTH_MANAGER_H
 
 #include "client/GS_TCP_Client.h"
+#include <FS.h>
 #include "mbfs/MB_FS.h"
 #include "MB_NTP.h"
 #include "GS_Const.h"

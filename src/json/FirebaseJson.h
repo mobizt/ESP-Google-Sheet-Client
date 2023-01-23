@@ -160,8 +160,6 @@ class FirebaseJson;
 class FirebaseJsonArray;
 class FirebaseJsonData;
 
-using namespace fs;
-
 static size_t getReservedLen(size_t len)
 {
     int blen = len + 1;

@@ -1,13 +1,13 @@
 #ifndef ESP_GOOGLE_SHEET_CLIENT_VERSION
-#define ESP_GOOGLE_SHEET_CLIENT_VERSION "1.3.1"
+#define ESP_GOOGLE_SHEET_CLIENT_VERSION "1.3.2"
 #endif
 
 /**
- * Google Sheet Client, ESP_Google_Sheet_Client.h v1.3.1
+ * Google Sheet Client, ESP_Google_Sheet_Client.h v1.3.2
  *
  * This library supports Espressif ESP8266 and ESP32 MCUs
  *
- * Created January 24, 2023
+ * Created February 1, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -37,12 +37,6 @@
 #define ESP_Google_Sheet_Client_H
 
 #include "auth/GAuthManager.h"
-
-enum esp_google_sheet_file_storage_type
-{
-    esP_google_sheet_file_storage_type_flash,
-    esP_google_sheet_file_storage_type_sd
-};
 
 class GSheetClass
 {
@@ -79,10 +73,8 @@ private:
 
     int cert_addr = 0;
     bool cert_updated = false;
-    MB_String certFile;
-    esp_google_sheet_file_storage_type certFileStorageType;
 
-    void auth(const char *client_email, const char *project_id, const char *private_key, ESP8266_SPI_ETH_MODULE *eth = nullptr);
+    void auth(const char *client_email, const char *project_id, const char *private_key, const char *sa_key_file, esp_google_sheet_file_storage_type storage_type, ESP8266_SPI_ETH_MODULE *eth = nullptr);
     void setTokenCallback(TokenStatusCallback callback);
     void addAP(const char *ssid, const char *password);
     void clearAP();
@@ -132,6 +124,7 @@ private:
                       const String &refreshToken, gauth_auth_token_type type,
                       const String &clientId, const String &clientSecret);
     void reset();
+    bool waitClockReady();
 };
 
 class GSheet_Values
@@ -1402,6 +1395,8 @@ public:
      * @param client_email (string) The Service Account's client email.
      * @param project_id (string) The project ID.
      * @param private_key (string) The Service Account's private key.
+     * @param eth (optional for ESP8266 only) The pointer to ESP8266 lwIP network class 
+     * e.g. ENC28J60lwIP, Wiznet5100lwIP and Wiznet5500lwIP.
      *
      */
     template <typename T1 = const char *, typename T2 = const char *, typename T3 = const char *>
@@ -1410,7 +1405,23 @@ public:
         values.init(gsheet);
         sheets.init(gsheet);
         developerMetadata.init(gsheet);
-        gsheet->auth(toString(client_email), toString(project_id), toString(private_key), eth);
+        gsheet->auth(toString(client_email), toString(project_id), toString(private_key), "", esp_google_sheet_file_storage_type_undefined, eth);
+    }
+
+    /** Begin the Google API authentication.
+     *
+     * @param service_account_file (string) The Service Account's JSON key file.
+     * @param storage_type (esp_google_sheet_file_storage_type) The JSON key file storage type e.g. esp_google_sheet_file_storage_type_flash and esp_google_sheet_file_storage_type_sd.
+     * @param eth (optional for ESP8266 only) The pointer to ESP8266 lwIP network class 
+     * e.g. ENC28J60lwIP, Wiznet5100lwIP and Wiznet5500lwIP.
+     */
+    template <typename T1 = const char *>
+    void begin(T1 service_account_file, esp_google_sheet_file_storage_type storage_type, ESP8266_SPI_ETH_MODULE *eth = nullptr)
+    {
+        values.init(gsheet);
+        sheets.init(gsheet);
+        developerMetadata.init(gsheet);
+        gsheet->auth("", "", "", toString(service_account_file), storage_type, eth);
     }
 
     /** Set the Root certificate data for server authorization.

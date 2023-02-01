@@ -123,6 +123,10 @@ Go to [Google Cloud Console](https://console.cloud.google.com/projectselector2/i
 
 ![Create SA9](/media/images/GC_Create_SA9.png)
 
+In the following stepts (15-16) for saving the Service Account Credential in flash memory at compile time.
+
+If you want to allow library to read the Service Account JSON key file directly at run time, skip these steps.
+
 15. Open the .json file that is already downloaded with text editor.
 
 ```json
@@ -268,6 +272,12 @@ void setup()
 
     //Begin the access token generation for Google API authentication
     GSheet.begin(CLIENT_EMAIL, PROJECT_ID, PRIVATE_KEY);
+
+    // In case SD/SD_MMC storage file access, mount the SD/SD_MMC card.
+    // SD_Card_Mounting(); // See src/GS_SDHelper.h
+
+    // Or begin with the Service Account JSON file that uploaded to the Filesystem image or stored in SD memory card.
+    // GSheet.begin("path/to/serviceaccount/json/file", esp_google_sheet_file_storage_type_flash /* or esp_google_sheet_file_storage_type_sd */);
 }
 
 

@@ -53,11 +53,9 @@
 #endif
 #endif
 
-
 #if __has_include(<core_esp8266_version.h>)
 #include <core_esp8266_version.h>
 #endif
-
 
 #endif
 
@@ -67,7 +65,7 @@
 #include <LwipIntfDev.h>
 #endif
 
-#if __has_include(<ENC28J60lwIP.h>)
+#if __has_include(<ENC28J60lwIP.h>) && defined(ENABLE_ESP8266_ENC28J60_ETH)
 #define INC_ENC28J60_LWIP
 #include <ENC28J60lwIP.h>
 #define ESP8266_SPI_ETH_MODULE ENC28J60lwIP
@@ -89,6 +87,12 @@
 
 #endif
 
+typedef enum
+{
+    esp_google_sheet_file_storage_type_undefined,
+    esp_google_sheet_file_storage_type_flash,
+    esp_google_sheet_file_storage_type_sd
+} esp_google_sheet_file_storage_type;
 
 typedef enum
 {
@@ -458,7 +462,6 @@ typedef std::function<void(void)> callback_function_t;
 typedef void (*GS_NetworkConnectionRequestCallback)(void);
 typedef void (*GS_NetworkStatusRequestCallback)(void);
 typedef void (*GS_ResponseCallback)(const char *);
-
 
 static const unsigned char gs_base64_table[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 

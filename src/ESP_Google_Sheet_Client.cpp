@@ -1,9 +1,9 @@
 /**
- * Google Sheet Client, GS_Google_Sheet_Client.cpp v1.3.1
+ * Google Sheet Client, GS_Google_Sheet_Client.cpp v1.3.2
  *
  * This library supports Espressif ESP8266 and ESP32 MCUs
  *
- * Created January 24, 2023
+ * Created February 1, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -43,12 +43,16 @@ GSheetClass::~GSheetClass()
     authMan.end();
 }
 
-void GSheetClass::auth(const char *client_email, const char *project_id, const char *private_key, ESP8266_SPI_ETH_MODULE *eth)
+void GSheetClass::auth(const char *client_email, const char *project_id, const char *private_key, const char *sa_key_file, esp_google_sheet_file_storage_type storage_type, ESP8266_SPI_ETH_MODULE *eth)
 {
     config.service_account.data.client_email = client_email;
     config.service_account.data.project_id = project_id;
     config.service_account.data.private_key = private_key;
     config.signer.expiredSeconds = 3600;
+
+    config.service_account.json.path = sa_key_file;
+    config.service_account.json.storage_type = (mb_fs_mem_storage_type)storage_type;
+
     if (eth)
     {
 #if defined(ESP8266) && defined(ESP8266_CORE_SDK_V3_X_X)
@@ -68,8 +72,6 @@ void GSheetClass::auth(const char *client_email, const char *project_id, const c
     config.internal.reconnect_wifi = WiFi.getAutoReconnect();
 #endif
     config.signer.tokens.token_type = token_type_oauth2_access_token;
-
-    gauth_auth_token_type type = config.signer.tokens.token_type;
 
     authMan.begin(&config, &mbfs, &mb_ts, &mb_ts_offset);
 }
@@ -179,6 +181,16 @@ void GSheetClass::addHeader(MB_String &req, host_type_t host_type, int len)
     req += FPSTR("Accept-Encoding: identity;q=1,chunked;q=0.1,*;q=0\r\n");
 }
 
+bool GSheetClass::waitClockReady()
+{
+    unsigned long ms = millis();
+    while (!setClock(config.internal.gmt_offset) && millis() - ms < 3000)
+    {
+        Utils::idle();
+    }
+    return config.internal.clock_rdy;
+}
+
 void GSheetClass::setCert(const char *ca)
 {
     int addr = reinterpret_cast<int>(ca);
@@ -186,15 +198,25 @@ void GSheetClass::setCert(const char *ca)
     {
         cert_updated = true;
         cert_addr = addr;
+#if defined(ESP8266) || defined(PICO_RP2040)
+        waitClockReady();
+#endif
     }
 }
 
 void GSheetClass::setCertFile(const char *filename, esp_google_sheet_file_storage_type type)
 {
-    certFile = filename;
-    certFileStorageType = type;
+    config.cert.file = filename;
+    config.cert.file_storage = (mb_fs_mem_storage_type)type;
     cert_addr = 0;
-    cert_updated = false;
+    if (config.cert.file.length() > 0)
+    {
+        cert_updated = true;
+
+#if defined(ESP8266) || defined(PICO_RP2040)
+        waitClockReady();
+#endif
+    }
 }
 
 void GSheetClass::reset()
@@ -250,7 +272,7 @@ bool GSheetClass::setSecure()
         }
         else
         {
-            if (!client->setCertFile(config.cert.file.c_str(), certFileStorageType == esP_google_sheet_file_storage_type_flash ? mb_fs_mem_storage_type_flash : mb_fs_mem_storage_type_sd))
+            if (!client->setCertFile(config.cert.file.c_str(), config.cert.file_storage))
                 client->setCACert(NULL);
         }
         cert_updated = false;

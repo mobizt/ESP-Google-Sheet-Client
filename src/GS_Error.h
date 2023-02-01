@@ -1,5 +1,5 @@
 /**
- * Created Janaury 10, 2023
+ * Created February 1, 2023
  */
 
 #ifndef GS_Error_H
@@ -77,5 +77,6 @@
 #define GS_ERROR_TOKEN_COMPLETE_UNNOTIFY /*          */ (GS_ERROR_RANGE - 15)
 #define GS_ERROR_TOKEN_ERROR_UNNOTIFY /*          */ (GS_ERROR_RANGE - 16)
 #define GS_ERROR_UDP_CLIENT_REQUIRED /*          */ (GS_ERROR_RANGE - 17)
-
+#define GS_ERROR_MISSING_SERVICE_ACCOUNT_CREDENTIALS /*          */ (GS_ERROR_RANGE - 18)
+#define GS_ERROR_SERVICE_ACCOUNT_JSON_FILE_PARSING_ERROR /*          */ (GS_ERROR_RANGE - 19)
 #endif

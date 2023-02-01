@@ -20,6 +20,9 @@
 #endif
 #include <ESP_Google_Sheet_Client.h>
 
+// For SD/SD_MMC mounting helper
+#include <GS_SDHelper.h>
+
 #define WIFI_SSID "WIFI_AP"
 #define WIFI_PASSWORD "WIFI_PASSWORD"
 
@@ -111,7 +114,10 @@ void setup()
     Serial.println(WiFi.localIP());
     Serial.println();
 
-    // GSheet.setCert(rootCACert); // or GSheet.setCertFile("<.pem cert file name>", esP_google_sheet_file_storage_type_flash /* or esP_google_sheet_file_storage_type_sd */);
+    // In case SD/SD_MMC storage file access, mount the SD/SD_MMC card.
+    // SD_Card_Mounting(); // See src/GS_SDHelper.h
+
+    // GSheet.setCert(rootCACert); // or GSheet.setCertFile("path/to/certificate/file.pem", esp_google_sheet_file_storage_type_flash /* or esp_google_sheet_file_storage_type_sd */);
 
     // Set the callback for Google API access token generation status (for debug only)
     GSheet.setTokenCallback(tokenStatusCallback);
@@ -128,6 +134,9 @@ void setup()
 
     // Begin the access token generation for Google API authentication
     GSheet.begin(CLIENT_EMAIL, PROJECT_ID, PRIVATE_KEY);
+
+    // Or begin with the Service Account JSON file
+    // GSheet.begin("path/to/serviceaccount/json/file", esp_google_sheet_file_storage_type_flash /* or esp_google_sheet_file_storage_type_sd */);
 }
 
 void loop()

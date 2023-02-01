@@ -29,6 +29,23 @@
  * 
 */
 
+/**
+ * Do not forget to defines the following macros in ESP_Google_Sheet_Client_FS_Config.h
+ * 
+ * #define ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT
+ * 
+ * For ESP8266 ENC28J60 Ethernet module
+ * #define ENABLE_ESP8266_ENC28J60_ETH
+ * 
+ * For ESP8266 W5100 Ethernet module
+ * #define ENABLE_ESP8266_W5100_ETH
+ * 
+ * For ESP8266 W5500 Ethernet module
+ * #define ENABLE_ESP8266_W5500_ETH
+ * 
+ */
+
+
 #include <Arduino.h>
 #if defined(ESP8266)
 #include <ENC28J60lwIP.h>
@@ -61,6 +78,7 @@ void tokenStatusCallback(TokenInfo info);
 ENC28J60lwIP eth(ETH_CS_PIN);
 //Wiznet5100lwIP eth(ETH_CS_PIN);
 //Wiznet5500lwIP eth(ETH_CS_PIN);
+
 
 // UDP Client for NTP Time synching
 EthernetUDP udpClient;

@@ -285,28 +285,43 @@ bool GAuthManager::handleToken()
 
     // Handle the signed jwt token generation, request and refresh the token
 
-    // if expiry time is up or reset/unset, start the process
+    // If expiry time is up or reset/unset, start the process
     if (exp)
     {
 
-        // refresh the token when refresh token was assigned via setAccessToken (fourth argument)
-        if (config->internal.refresh_token.length() > 0)
-            return requestTokens(true);
+        // Handle the jwt token processing
 
-        // handle the jwt token processing
-
-        // if it is the first step and no task is currently running
+        // If it is the first step and no task is currently running
         if (config->signer.step == gauth_jwt_generation_step_begin && !config->signer.tokenTaskRunning)
         {
-            // if service account key json file assigned and no private key parsing data
+            bool use_sa_key_file = false, valid_key_file = false;
+            // If service account key json file assigned and no private key parsing data
             if (config->service_account.json.path.length() > 0 && config->signer.pk.length() == 0)
             {
-                // if fail to parse the private key from service account json file, reset the token status
-                if (!parseSAFile())
-                    config->signer.tokens.status = token_status_uninitialized;
+                use_sa_key_file = true;
+                // Parse the private key from service account json file
+                valid_key_file = parseSAFile();
             }
 
-            // if no token status set, set the states
+            // Check the SA creds
+            if (!serviceAccountCredsReady())
+            {
+                config->signer.tokens.status = token_status_error;
+                if (use_sa_key_file && !valid_key_file)
+                {
+                    errorToString(GS_ERROR_SERVICE_ACCOUNT_JSON_FILE_PARSING_ERROR, config->signer.tokens.error.message);
+                    config->signer.tokens.error.code = GS_ERROR_SERVICE_ACCOUNT_JSON_FILE_PARSING_ERROR;
+                }
+                else
+                {
+                    errorToString(GS_ERROR_MISSING_SERVICE_ACCOUNT_CREDENTIALS, config->signer.tokens.error.message);
+                    config->signer.tokens.error.code = GS_ERROR_MISSING_SERVICE_ACCOUNT_CREDENTIALS;
+                }
+                sendTokenStatusCB();
+                return false;
+            }
+
+            // If no token status set, set the states
             if (config->signer.tokens.status != token_status_on_initialize)
             {
                 config->signer.tokens.status = token_status_on_initialize;
@@ -316,7 +331,7 @@ bool GAuthManager::handleToken()
                 sendTokenStatusCB();
             }
 
-            // set the token processing task started flag and run the task
+            // If service account creds are ready, set the token processing task started flag and run the task
             _token_processing_task_enable = true;
             tokenProcessingTask();
         }
@@ -1557,6 +1572,12 @@ void GAuthManager::errorToString(int httpCode, MB_String &buff)
         buff += F("UDP client is required for NTP server time synching based on your network type \ne.g. WiFiUDP or EthernetUDP. Please call GSheet.setUDPClient(&udpClient, gmtOffset); to assign the UDP client.");
         return;
 
+    case GS_ERROR_MISSING_SERVICE_ACCOUNT_CREDENTIALS:
+        buff += F("The Service Account Credentials are missing.");
+        return;
+    case GS_ERROR_SERVICE_ACCOUNT_JSON_FILE_PARSING_ERROR:
+        buff += F("Unable to parse Service Account JSON file. Please check file name, storage type and its content.");
+        return;
     default:
         buff += F("unknown error");
         return;

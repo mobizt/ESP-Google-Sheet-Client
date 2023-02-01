@@ -65,6 +65,9 @@
 // To use external Client.
 // #define ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT
 
+// For ESP8266 ENC28J60 Ethernet module
+// #define ENABLE_ESP8266_ENC28J60_ETH
+
 // For ESP8266 W5100 Ethernet module
 // #define ENABLE_ESP8266_W5100_ETH
 

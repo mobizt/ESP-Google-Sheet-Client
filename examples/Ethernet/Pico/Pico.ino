@@ -32,6 +32,13 @@
  *
  */
 
+/**
+ * Do not forget to defines the following macro in ESP_Google_Sheet_Client_FS_Config.h
+ * 
+ * #define ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT
+ * 
+ */
+
 #include <Arduino.h>
 #include <ESP_Google_Sheet_Client.h>
 

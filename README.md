@@ -461,9 +461,26 @@ param **`project_id`** (string) The project ID.
 
 param **`private_key`** (string) The Service Account's private key.
 
+param **`eth`** (optional for ESP8266 only) The pointer to ESP8266 lwIP network class e.g. ENC28J60lwIP, Wiznet5100lwIP and Wiznet5500lwIP.
+
 ```cpp
-void begin(<string> client_email, <string> project_id, <string> private_key);
+void begin(<string> client_email, <string> project_id, <string> private_key, <ESP8266_spi_eth_module> *eth = nullptr);
 ```
+
+
+
+#### Begin the Google API authentication. 
+
+param **`service_account_file`** (string) The Service Account's JSON key file.
+
+param **`storage_type`** (esp_google_sheet_file_storage_type) The JSON key file storage type e.g. esp_google_sheet_file_storage_type_flash and esp_google_sheet_file_storage_type_sd.
+
+param **`eth`** (optional for ESP8266 only) The pointer to ESP8266 lwIP network class e.g. ENC28J60lwIP, Wiznet5100lwIP and Wiznet5500lwIP.
+
+```cpp
+void begin(<string> service_account_file, esp_google_sheet_file_storage_type storage_type, <ESP8266_spi_eth_module> *eth = nullptr);
+```
+
 
 
 #### Set the OAuth2.0 token generation status callback. 

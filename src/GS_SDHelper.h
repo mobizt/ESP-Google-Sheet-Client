@@ -1,12 +1,12 @@
 
-#ifndef SD_HELPER_H_
-#define SD_HELPER_H_
+#ifndef GS_SD_HELPER_H_
+#define GS_SD_HELPER_H_
 
 #include <Arduino.h>
 #include "ESP_Google_Sheet_Client.h"
 
-// If SD Card used for storage, assign SD card type and FS used in src/GSheetFS.h and
-// change the config for that card interfaces in this file (src/addons/SDHelper.h)
+// If SD Card used for storage, assign SD card type and FS used in src/ESP_Google_Sheet_Client_FS_Config.h and
+// change the config for that card interfaces in this file (src/GS_SDHelper.h)
 
 #if defined(DEFAULT_SD_FS) && defined(CARD_TYPE_SD)
 

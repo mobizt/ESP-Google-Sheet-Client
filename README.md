@@ -79,7 +79,7 @@ Go to [Google Cloud Console](https://console.cloud.google.com/projectselector2/i
 
 ![Select Project](/media/images/GC_Select_Project.png)
 
-3. Click at ADD SERVICE ACCOUNT.
+3. Click at + CREAT SERVICE ACCOUNT.
 
 ![Create SA](/media/images/GC_Create_SA.png)
 

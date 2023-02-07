@@ -23,7 +23,7 @@
 #define SPI_CS_PIN PIN_SPI1_SS
 #endif
 
-// if SdFat library installed and GSheetFS.h was set to use it (for ESP32 only)
+// if SdFat library installed and ESP_Google_Sheet_Client_FS_Config.h was set to use it (for ESP32 only)
 #if defined(USE_SD_FAT_ESP32)
 
 // https://github.com/greiman/SdFat

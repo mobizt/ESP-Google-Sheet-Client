@@ -1,9 +1,9 @@
 /**
- * Google Sheet Client, GS_Google_Sheet_Client.cpp v1.3.2
+ * Google Sheet Client, GS_Google_Sheet_Client.cpp v1.3.3
  *
  * This library supports Espressif ESP8266 and ESP32 MCUs
  *
- * Created February 1, 2023
+ * Created February 6, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -83,15 +83,12 @@ void GSheetClass::setTokenCallback(TokenStatusCallback callback)
 
 void GSheetClass::addAP(const char *ssid, const char *password)
 {
-    gs_wifi_credential_t cred;
-    cred.ssid = ssid;
-    cred.password = password;
-    config.wifi.credentials.push_back(cred);
+    config.wifi.addAP(ssid, password);
 }
 
 void GSheetClass::clearAP()
 {
-    config.wifi.credentials.clear();
+    config.wifi.clearAP();
 }
 
 bool GSheetClass::checkToken()

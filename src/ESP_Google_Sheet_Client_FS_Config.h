@@ -42,7 +42,7 @@
 #include <SD.h>
 #define DEFAULT_SD_FS SD
 #define CARD_TYPE_SD 1
-#elif  defined(PICO_RP2040)
+#elif defined(PICO_RP2040)
 // Use SDFS (ESP8266SdFat) instead of SD
 #include <SDFS.h>
 #define DEFAULT_SD_FS SDFS
@@ -73,5 +73,11 @@
 
 // For ESP8266 W5500 Ethernet module
 // #define ENABLE_ESP8266_W5500_ETH
+
+// To use your custom config, create Custom_GS_FS_Config.h in the same folder of this 
+// ESP_Google_Sheet_Client_FS_Config.h file
+#if __has_include("Custom_GS_FS_Config.h")
+#include "Custom_GS_FS_Config.h"
+#endif
 
 #endif

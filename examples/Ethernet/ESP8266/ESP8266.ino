@@ -1,68 +1,64 @@
 
 /**
  * Created by K. Suwatchai (Mobizt)
- * 
+ *
  * Email: k_suwatchai@hotmail.com
- * 
+ *
  * Github: https://github.com/mobizt
- * 
+ *
  * Copyright (c) 2023 mobizt
  *
-*/
+ */
 
-//This example shows how to connect to Google API via ethernet.
+// This example shows how to connect to Google API via ethernet.
 
-//This example is for ESP8266 and ENC28J60 Ethernet module.
+// This example is for ESP8266 and ENC28J60 Ethernet module.
 
 /**
- * 
+ *
  * The ENC28J60 Ethernet module and ESP8266 board, SPI port wiring connection.
- * 
- * ESP8266 (Wemos D1 Mini or NodeMCU)        ENC28J60         
- * 
+ *
+ * ESP8266 (Wemos D1 Mini or NodeMCU)        ENC28J60
+ *
  * GPIO12 (D6) - MISO                        SO
  * GPIO13 (D7) - MOSI                        SI
  * GPIO14 (D5) - SCK                         SCK
  * GPIO16 (D0) - CS                          CS
  * GND                                       GND
  * 3V3                                       VCC
- * 
-*/
+ *
+ */
 
 /**
  * Do not forget to defines the following macros in ESP_Google_Sheet_Client_FS_Config.h
- * 
- * #define ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT
- * 
+ *
  * For ESP8266 ENC28J60 Ethernet module
  * #define ENABLE_ESP8266_ENC28J60_ETH
- * 
+ *
  * For ESP8266 W5100 Ethernet module
  * #define ENABLE_ESP8266_W5100_ETH
- * 
+ *
  * For ESP8266 W5500 Ethernet module
  * #define ENABLE_ESP8266_W5500_ETH
- * 
+ *
  */
-
 
 #include <Arduino.h>
 #if defined(ESP8266)
 #include <ENC28J60lwIP.h>
-//#include <W5100lwIP.h>
-//#include <W5500lwIP.h>
+// #include <W5100lwIP.h>
+// #include <W5500lwIP.h>
 #endif
 #include <ESP_Google_Sheet_Client.h>
-#include <Ethernet.h>
 
-//For how to create Service Account and how to use the library, go to https://github.com/mobizt/ESP-Google-Sheet-Client
+// For how to create Service Account and how to use the library, go to https://github.com/mobizt/ESP-Google-Sheet-Client
 
 #define PROJECT_ID "PROJECT_ID"
 
-//Service Account's client email
+// Service Account's client email
 #define CLIENT_EMAIL "CLIENT_EMAIL"
 
-//Service Account's private key
+// Service Account's private key
 const char PRIVATE_KEY[] PROGMEM = "-----BEGIN PRIVATE KEY-----XXXXXXXXXXXX-----END PRIVATE KEY-----\n";
 
 bool gsheetSetupReady = false;
@@ -73,16 +69,11 @@ void setupGsheet();
 
 void tokenStatusCallback(TokenInfo info);
 
-#define ETH_CS_PIN 16 //D0
+#define ETH_CS_PIN 16 // D0
 
 ENC28J60lwIP eth(ETH_CS_PIN);
-//Wiznet5100lwIP eth(ETH_CS_PIN);
-//Wiznet5500lwIP eth(ETH_CS_PIN);
-
-
-// UDP Client for NTP Time synching
-EthernetUDP udpClient;
-
+// Wiznet5100lwIP eth(ETH_CS_PIN);
+// Wiznet5500lwIP eth(ETH_CS_PIN);
 
 void setup()
 {
@@ -134,7 +125,7 @@ void loop()
     if (ready && !taskComplete)
     {
 
-        //Google sheet code here
+        // Google sheet code here
 
         taskComplete = true;
     }
@@ -143,14 +134,18 @@ void loop()
 
 void setupGsheet()
 {
-    //Set the callback for Google API access token generation status (for debug only)
+    // Set the callback for Google API access token generation status (for debug only)
     GSheet.setTokenCallback(tokenStatusCallback);
 
     // Set the seconds to refresh the auth token before expire (60 to 3540, default is 300 seconds)
     GSheet.setPrerefreshSeconds(10 * 60);
 
-    //Begin the access token generation for Google API authentication
+// Begin the access token generation for Google API authentication
+#if defined(ENABLE_ESP8266_ENC28J60_ETH) || defined(ENABLE_ESP8266_W5100_ETH) || defined(ENABLE_ESP8266_W5500_ETH)
     GSheet.begin(CLIENT_EMAIL, PROJECT_ID, PRIVATE_KEY, &eth);
+#else
+    GSheet.begin(CLIENT_EMAIL, PROJECT_ID, PRIVATE_KEY);
+#endif
 
     gsheetSetupReady = true;
 }

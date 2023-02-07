@@ -1,13 +1,13 @@
 #ifndef ESP_GOOGLE_SHEET_CLIENT_VERSION
-#define ESP_GOOGLE_SHEET_CLIENT_VERSION "1.3.2"
+#define ESP_GOOGLE_SHEET_CLIENT_VERSION "1.3.3"
 #endif
 
 /**
- * Google Sheet Client, ESP_Google_Sheet_Client.h v1.3.2
+ * Google Sheet Client, ESP_Google_Sheet_Client.h v1.3.3
  *
  * This library supports Espressif ESP8266 and ESP32 MCUs
  *
- * Created February 1, 2023
+ * Created February 6, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -120,9 +120,6 @@ private:
     bool setSecure();
     void setCert(const char *ca);
     void setCertFile(const char *filename, esp_google_sheet_file_storage_type type);
-    void setAuthToken(const String &authToken, size_t expire,
-                      const String &refreshToken, gauth_auth_token_type type,
-                      const String &clientId, const String &clientSecret);
     void reset();
     bool waitClockReady();
 };

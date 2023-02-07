@@ -2,28 +2,28 @@
 #ifndef GS_CONST_H
 #define GS_CONST_H
 
-#define DEFAULT_AUTH_TOKEN_PRE_REFRESH_SECONDS 5 * 60
+#define GS_DEFAULT_AUTH_TOKEN_PRE_REFRESH_SECONDS 5 * 60
 
-#define DEFAULT_AUTH_TOKEN_EXPIRED_SECONDS 3600
+#define GS_DEFAULT_AUTH_TOKEN_EXPIRED_SECONDS 3600
 
-#define DEFAULT_REQUEST_TIMEOUT 2000
+#define GS_DEFAULT_REQUEST_TIMEOUT 2000
 
 #define GS_DEFAULT_TS 1618971013
 
 #define GS_TIME_SYNC_INTERVAL 5000
 
-#define MIN_TOKEN_GENERATION_ERROR_INTERVAL 5 * 1000
+#define GS_MIN_TOKEN_GENERATION_ERROR_INTERVAL 5 * 1000
 
-#define MIN_NTP_SERVER_SYNC_TIME_OUT 15 * 1000
+#define GS_MIN_NTP_SERVER_SYNC_TIME_OUT 15 * 1000
 
-#define MIN_TOKEN_GENERATION_BEGIN_STEP_INTERVAL 300
+#define GS_MIN_TOKEN_GENERATION_BEGIN_STEP_INTERVAL 300
 
-#define MIN_SERVER_RESPONSE_TIMEOUT 1 * 1000
-#define DEFAULT_SERVER_RESPONSE_TIMEOUT 5 * 1000
-#define MAX_SERVER_RESPONSE_TIMEOUT 60 * 1000
+#define GS_MIN_SERVER_RESPONSE_TIMEOUT 1 * 1000
+#define GS_DEFAULT_SERVER_RESPONSE_TIMEOUT 5 * 1000
+#define GS_MAX_SERVER_RESPONSE_TIMEOUT 60 * 1000
 
-#define MIN_WIFI_RECONNECT_TIMEOUT 10 * 1000
-#define MAX_WIFI_RECONNECT_TIMEOUT 5 * 60 * 1000
+#define GS_MIN_WIFI_RECONNECT_TIMEOUT 10 * 1000
+#define GS_MAX_WIFI_RECONNECT_TIMEOUT 5 * 60 * 1000
 
 #if defined(ESP32) && !defined(ESP_ARDUINO_VERSION) /* ESP32 core < v2.0.x */
 #include <sys/time.h>
@@ -162,11 +162,30 @@ struct gs_wifi_credential_t
     MB_String password;
 };
 
-struct gs_wifi_credentials_t
+class esp_gs_wifi
 {
 public:
-    gs_wifi_credentials_t(){};
-    ~gs_wifi_credentials_t() { credentials.clear(); };
+    esp_gs_wifi() { clearAP(); };
+    ~esp_gs_wifi() { credentials.clear(); };
+    void addAP(const String &ssid, const String &password)
+    {
+        gs_wifi_credential_t data;
+        data.ssid = ssid;
+        data.password = password;
+        credentials.push_back(data);
+    }
+    void clearAP()
+    {
+        credentials.clear();
+    }
+    size_t size() { return credentials.size(); }
+
+    gs_wifi_credential_t operator[](size_t index)
+    {
+        return credentials[index];
+    }
+
+    private:
     MB_List<gs_wifi_credential_t> credentials;
 };
 
@@ -229,10 +248,10 @@ struct gauth_token_signer_resources_t
     bool tokenTaskRunning = false;
     /* last token request milliseconds count */
     unsigned long lastReqMillis = 0;
-    unsigned long preRefreshSeconds = DEFAULT_AUTH_TOKEN_PRE_REFRESH_SECONDS;
-    unsigned long expiredSeconds = DEFAULT_AUTH_TOKEN_EXPIRED_SECONDS;
+    unsigned long preRefreshSeconds = GS_DEFAULT_AUTH_TOKEN_PRE_REFRESH_SECONDS;
+    unsigned long expiredSeconds = GS_DEFAULT_AUTH_TOKEN_EXPIRED_SECONDS;
     /* request time out period (interval) */
-    unsigned long reqTO = DEFAULT_REQUEST_TIMEOUT;
+    unsigned long reqTO = GS_DEFAULT_REQUEST_TIMEOUT;
     MB_String customHeaders;
     MB_String pk;
     size_t hashSize = 32; // SHA256 size (256 bits or 32 bytes)
@@ -452,7 +471,7 @@ struct gauth_cfg_t
     gauth_token_info_t tokenInfo;
     gauth_auth_token_error_t error;
 
-    struct gs_wifi_credentials_t wifi;
+    struct esp_gs_wifi wifi;
 };
 
 #if !defined(__AVR__)

@@ -13,9 +13,6 @@
 // This example shows how to connect to Google API via ethernet using external SSL client
 // This example is for Raspberri Pi Pico and W5500 Ethernet module.
 
-// Plese don't forget to assign macro ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT
-// in ESP_Google_Sheet_Client_FS_Config.h
-
 /**
  *
  * The W5500 Ethernet module and RPI2040 Pico board, SPI 0 port wiring connection.

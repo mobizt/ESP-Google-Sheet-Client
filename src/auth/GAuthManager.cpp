@@ -1,3 +1,32 @@
+/**
+ * Google Sheet Client, GAuthManager v1.0.1
+ *
+ * This library supports Espressif ESP8266, ESP32 and Raspberry Pi Pico MCUs.
+ *
+ * Created February 6, 2023
+ *
+ * The MIT License (MIT)
+ * Copyright (c) 2022 K. Suwatchai (Mobizt)
+ *
+ *
+ * Permission is hereby granted, free of charge, to any person returning a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
 #ifndef GAUTH_MANAGER_CPP
 #define GAUTH_MANAGER_CPP
 
@@ -292,43 +321,46 @@ bool GAuthManager::handleToken()
         // Handle the jwt token processing
 
         // If it is the first step and no task is currently running
-        if (config->signer.step == gauth_jwt_generation_step_begin && !config->signer.tokenTaskRunning)
+        if (!config->signer.tokenTaskRunning)
         {
-            bool use_sa_key_file = false, valid_key_file = false;
-            // If service account key json file assigned and no private key parsing data
-            if (config->service_account.json.path.length() > 0 && config->signer.pk.length() == 0)
+            if (config->signer.step == gauth_jwt_generation_step_begin)
             {
-                use_sa_key_file = true;
-                // Parse the private key from service account json file
-                valid_key_file = parseSAFile();
-            }
-
-            // Check the SA creds
-            if (!serviceAccountCredsReady())
-            {
-                config->signer.tokens.status = token_status_error;
-                if (use_sa_key_file && !valid_key_file)
+                bool use_sa_key_file = false, valid_key_file = false;
+                // If service account key json file assigned and no private key parsing data
+                if (config->service_account.json.path.length() > 0 && config->signer.pk.length() == 0)
                 {
-                    errorToString(GS_ERROR_SERVICE_ACCOUNT_JSON_FILE_PARSING_ERROR, config->signer.tokens.error.message);
-                    config->signer.tokens.error.code = GS_ERROR_SERVICE_ACCOUNT_JSON_FILE_PARSING_ERROR;
+                    use_sa_key_file = true;
+                    // Parse the private key from service account json file
+                    valid_key_file = parseSAFile();
                 }
-                else
-                {
-                    errorToString(GS_ERROR_MISSING_SERVICE_ACCOUNT_CREDENTIALS, config->signer.tokens.error.message);
-                    config->signer.tokens.error.code = GS_ERROR_MISSING_SERVICE_ACCOUNT_CREDENTIALS;
-                }
-                sendTokenStatusCB();
-                return false;
-            }
 
-            // If no token status set, set the states
-            if (config->signer.tokens.status != token_status_on_initialize)
-            {
-                config->signer.tokens.status = token_status_on_initialize;
-                config->signer.tokens.error.code = 0;
-                config->signer.tokens.error.message.clear();
-                config->internal.last_jwt_generation_error_cb_millis = 0;
-                sendTokenStatusCB();
+                // Check the SA creds
+                if (!serviceAccountCredsReady())
+                {
+                    config->signer.tokens.status = token_status_error;
+                    if (use_sa_key_file && !valid_key_file)
+                    {
+                        errorToString(GS_ERROR_SERVICE_ACCOUNT_JSON_FILE_PARSING_ERROR, config->signer.tokens.error.message);
+                        config->signer.tokens.error.code = GS_ERROR_SERVICE_ACCOUNT_JSON_FILE_PARSING_ERROR;
+                    }
+                    else
+                    {
+                        errorToString(GS_ERROR_MISSING_SERVICE_ACCOUNT_CREDENTIALS, config->signer.tokens.error.message);
+                        config->signer.tokens.error.code = GS_ERROR_MISSING_SERVICE_ACCOUNT_CREDENTIALS;
+                    }
+                    sendTokenStatusCB();
+                    return false;
+                }
+
+                // If no token status set, set the states
+                if (config->signer.tokens.status != token_status_on_initialize)
+                {
+                    config->signer.tokens.status = token_status_on_initialize;
+                    config->signer.tokens.error.code = 0;
+                    config->signer.tokens.error.message.clear();
+                    config->internal.last_jwt_generation_error_cb_millis = 0;
+                    sendTokenStatusCB();
+                }
             }
 
             // If service account creds are ready, set the token processing task started flag and run the task
@@ -538,7 +570,7 @@ bool GAuthManager::refreshToken()
 
     struct gauth_auth_token_error_t error;
 
-    int httpCode = 0;
+    int httpCode = GS_ERROR_HTTP_CODE_REQUEST_TIMEOUT;
     MB_String payload;
     if (handleResponse(tcpClient, httpCode, payload))
     {
@@ -616,7 +648,6 @@ bool GAuthManager::handleTaskError(int code, int httpCode)
         {
             // Show error based on request time out
             setTokenError(code);
-            config->signer.tokens.error.message.clear();
         }
         else
         {
@@ -1107,7 +1138,7 @@ bool GAuthManager::requestTokens(bool refresh)
 
     struct gauth_auth_token_error_t error;
 
-    int httpCode = 0;
+    int httpCode = GS_ERROR_HTTP_CODE_REQUEST_TIMEOUT;
     MB_String payload;
     if (handleResponse(tcpClient, httpCode, payload))
     {
@@ -1332,10 +1363,10 @@ bool GAuthManager::reconnect(GS_TCP_Client *client, unsigned long dataTime)
 
     if (dataTime > 0)
     {
-        unsigned long tmo = DEFAULT_SERVER_RESPONSE_TIMEOUT;
-        if (config->timeout.serverResponse < MIN_SERVER_RESPONSE_TIMEOUT ||
-            config->timeout.serverResponse > MAX_SERVER_RESPONSE_TIMEOUT)
-            config->timeout.serverResponse = DEFAULT_SERVER_RESPONSE_TIMEOUT;
+        unsigned long tmo = GS_DEFAULT_SERVER_RESPONSE_TIMEOUT;
+        if (config->timeout.serverResponse < GS_MIN_SERVER_RESPONSE_TIMEOUT ||
+            config->timeout.serverResponse > GS_MAX_SERVER_RESPONSE_TIMEOUT)
+            config->timeout.serverResponse = GS_DEFAULT_SERVER_RESPONSE_TIMEOUT;
 
         tmo = config->timeout.serverResponse;
 
@@ -1352,9 +1383,9 @@ bool GAuthManager::reconnect(GS_TCP_Client *client, unsigned long dataTime)
 
         if (autoReconnectWiFi)
         {
-            if (config->timeout.wifiReconnect < MIN_WIFI_RECONNECT_TIMEOUT ||
-                config->timeout.wifiReconnect > MAX_WIFI_RECONNECT_TIMEOUT)
-                config->timeout.wifiReconnect = MIN_WIFI_RECONNECT_TIMEOUT;
+            if (config->timeout.wifiReconnect < GS_MIN_WIFI_RECONNECT_TIMEOUT ||
+                config->timeout.wifiReconnect > GS_MAX_WIFI_RECONNECT_TIMEOUT)
+                config->timeout.wifiReconnect = GS_MIN_WIFI_RECONNECT_TIMEOUT;
 
             if (millis() - config->internal.last_reconnect_millis > config->timeout.wifiReconnect)
             {

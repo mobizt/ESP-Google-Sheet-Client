@@ -505,41 +505,6 @@ namespace JsonHelper
         return MB_String(path).find('/') != MB_String::npos;
     }
 
-    inline bool parseChunk(MB_String &val, const MB_String &chunk, const MB_String &key, int &pos)
-    {
-        if (key.length() == 0)
-            return false;
-
-        MB_String token = gs_pgm_str_3; // "\""
-
-        MB_String _key;
-
-        if (key[0] != '"')
-            _key += token;
-        _key += key;
-        if (key[key.length() - 1] != '"')
-            _key += token;
-
-        size_t p1 = chunk.find(_key, pos);
-        if (p1 != MB_String::npos)
-        {
-            size_t p2 = chunk.find(MB_String(gs_pgm_str_7 /* ":" */).c_str(), p1 + _key.length());
-            if (p2 != MB_String::npos)
-                p2 = chunk.find(token, p2 + 1);
-            if (p2 != MB_String::npos)
-            {
-                size_t p3 = chunk.find(token, p2 + token.length());
-                if (p3 != MB_String::npos)
-                {
-                    pos = p3;
-                    val = chunk.substr(p2 + token.length(), p3 - p2 - token.length());
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
     /* convert comma separated tokens into JSON Array and set/add to JSON object */
     inline void addTokens(FirebaseJson *json, PGM_P key, const MB_String &tokens, const char *pre = "")
     {

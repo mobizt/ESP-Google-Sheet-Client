@@ -1,9 +1,9 @@
 /**
- * Google Sheet Client, GS_Google_Sheet_Client.cpp v1.3.3
+ * Google Sheet Client, GS_Google_Sheet_Client.cpp v1.3.4
  *
  * This library supports Espressif ESP8266 and ESP32 MCUs
  *
- * Created February 6, 2023
+ * Created March 5, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -137,7 +137,7 @@ bool GSheetClass::beginRequest(MB_String &req, host_type_t host_type)
     if (client && !client->connected())
     {
 
-#if defined(ESP8266) || defined(PICO_RP2040)
+#if defined(ESP8266) || defined(MB_ARDUINO_PICO)
         if (host_type == host_type_sheet)
             client->ethDNSWorkAround(&config.spi_ethernet_module, (const char *)FPSTR("sheets.googleapis.com"), 443);
         else if (host_type == host_type_drive)
@@ -195,7 +195,7 @@ void GSheetClass::setCert(const char *ca)
     {
         cert_updated = true;
         cert_addr = addr;
-#if defined(ESP8266) || defined(PICO_RP2040)
+#if defined(ESP8266) || defined(MB_ARDUINO_PICO)
         waitClockReady();
 #endif
     }
@@ -210,7 +210,7 @@ void GSheetClass::setCertFile(const char *filename, esp_google_sheet_file_storag
     {
         cert_updated = true;
 
-#if defined(ESP8266) || defined(PICO_RP2040)
+#if defined(ESP8266) || defined(MB_ARDUINO_PICO)
         waitClockReady();
 #endif
     }
@@ -244,7 +244,7 @@ bool GSheetClass::setSecure()
     if (!authMan.reconnect(client))
         return false;
 
-#if (defined(ESP8266) || defined(PICO_RP2040))
+#if (defined(ESP8266) || defined(MB_ARDUINO_PICO))
     if (TimeHelper::getTime(&mb_ts, &mb_ts_offset) > GS_DEFAULT_TS)
     {
         config.internal.clock_rdy = true;

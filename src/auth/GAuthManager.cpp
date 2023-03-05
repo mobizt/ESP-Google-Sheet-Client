@@ -1,9 +1,9 @@
 /**
- * Google Sheet Client, GAuthManager v1.0.1
+ * Google Sheet Client, GAuthManager v1.0.2
  *
  * This library supports Espressif ESP8266, ESP32 and Raspberry Pi Pico MCUs.
  *
- * Created February 6, 2023
+ * Created March 5, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -30,6 +30,8 @@
 #ifndef GAUTH_MANAGER_CPP
 #define GAUTH_MANAGER_CPP
 
+#include <Arduino.h>
+#include "mbfs/MB_MCU.h"
 #include "GAuthManager.h"
 
 GAuthManager::GAuthManager()
@@ -185,7 +187,7 @@ time_t GAuthManager::getTime()
 bool GAuthManager::setTime(time_t ts)
 {
 
-#if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT) && (defined(ESP8266) || defined(ESP32) || defined(PICO_RP2040))
+#if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT) && (defined(ESP8266) || defined(ESP32) || defined(MB_ARDUINO_PICO))
 
     if (TimeHelper::setTimestamp(ts) == 0)
     {
@@ -428,7 +430,7 @@ void GAuthManager::tokenProcessingTask()
     // flag set for valid time required
     bool sslValidTime = false;
 
-#if defined(ESP8266) || defined(PICO_RP2040)
+#if defined(ESP8266) || defined(MB_ARDUINO_PICO)
     // valid time required for SSL handshake using server certificate in ESP8266
     if (config->cert.data != NULL || config->cert.file.length() > 0)
         sslValidTime = true;
@@ -872,7 +874,7 @@ bool GAuthManager::createJWT()
             MemoryHelper::freeBuffer(mbfs, config->signer.hash);
             return false;
         }
-#elif defined(ESP8266) || defined(PICO_RP2040)
+#elif defined(ESP8266) || defined(MB_ARDUINO_PICO)
         config->signer.hash = MemoryHelper::createBuffer<char *>(mbfs, config->signer.hashSize);
         br_sha256_context mc;
         br_sha256_init(&mc);
@@ -973,7 +975,7 @@ bool GAuthManager::createJWT()
 
         if (ret != 0)
             return false;
-#elif defined(ESP8266) || defined(PICO_RP2040)
+#elif defined(ESP8266) || defined(MB_ARDUINO_PICO)
         // RSA private key
         BearSSL::PrivateKey *pk = nullptr;
         Utils::idle();

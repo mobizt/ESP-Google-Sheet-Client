@@ -2,6 +2,7 @@
 #define ESP_GOOGLE_SHEET_CLIENT_FS_CONFIG_H_
 
 #include <Arduino.h>
+#include "mbfs/MB_MCU.h"
 
 /**
  * To use other flash file systems
@@ -24,7 +25,7 @@
 #endif
 #if defined(ESP32) || defined(ESP8266)
 #define DEFAULT_FLASH_FS SPIFFS
-#elif defined(PICO_RP2040)
+#elif defined(ARDUINO_ARCH_RP2040) && !defined(ARDUINO_NANO_RP2040_CONNECT)
 #include <LittleFS.h>
 #define DEFAULT_FLASH_FS LittleFS
 #endif
@@ -42,7 +43,7 @@
 #include <SD.h>
 #define DEFAULT_SD_FS SD
 #define CARD_TYPE_SD 1
-#elif defined(PICO_RP2040)
+#elif defined(ARDUINO_ARCH_RP2040) && !defined(ARDUINO_NANO_RP2040_CONNECT)
 // Use SDFS (ESP8266SdFat) instead of SD
 #include <SDFS.h>
 #define DEFAULT_SD_FS SDFS

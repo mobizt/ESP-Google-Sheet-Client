@@ -25,6 +25,9 @@
 #define GS_MIN_WIFI_RECONNECT_TIMEOUT 10 * 1000
 #define GS_MAX_WIFI_RECONNECT_TIMEOUT 5 * 60 * 1000
 
+#include <Arduino.h>
+#include "mbfs/MB_MCU.h"
+
 #if defined(ESP32) && !defined(ESP_ARDUINO_VERSION) /* ESP32 core < v2.0.x */
 #include <sys/time.h>
 #else
@@ -258,7 +261,7 @@ struct gauth_token_signer_resources_t
     size_t signatureSize = 256;
 #if defined(ESP32)
     uint8_t *hash = nullptr;
-#elif defined(ESP8266) || defined(PICO_RP2040)
+#elif defined(ESP8266) || defined(MB_ARDUINO_PICO)
     char *hash = nullptr;
 #endif
     unsigned char *signature = nullptr;

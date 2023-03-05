@@ -1,9 +1,9 @@
 /**
- * Google Sheet Client, GAuthManager v1.0.1
+ * Google Sheet Client, GAuthManager v1.0.2
  *
  * This library supports Espressif ESP8266, ESP32 and Raspberry Pi Pico MCUs.
  *
- * Created February 6, 2023
+ * Created March 5, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -28,7 +28,8 @@
  */
 #ifndef GAUTH_MANAGER_H
 #define GAUTH_MANAGER_H
-
+#include <Arduino.h>
+#include "mbfs/MB_MCU.h"
 #include "client/GS_TCP_Client.h"
 #include <FS.h>
 #include "mbfs/MB_FS.h"
@@ -157,7 +158,7 @@ private:
     }
 #endif
 
-#if defined(PICO_RP2040)
+#if defined(MB_ARDUINO_PICO)
 #if __has_include(<WiFiMulti.h>)
 #define HAS_WIFIMULTI
     WiFiMulti *multi = nullptr;

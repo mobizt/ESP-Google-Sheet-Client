@@ -1,9 +1,9 @@
 #ifndef GS_HELPER_H
 #define GS_HELPER_H
 
-#include "ESP_Google_Sheet_Client_FS_Config.h"
-
 #include <Arduino.h>
+#include "mbfs/MB_MCU.h"
+#include "ESP_Google_Sheet_Client_FS_Config.h"
 #include <time.h>
 
 #if !defined(__AVR__)
@@ -14,7 +14,7 @@
 #include "GS_Const.h"
 #if defined(ESP8266)
 #include <Schedule.h>
-#elif defined(PICO_RP2040)
+#elif defined(MB_ARDUINO_PICO)
 #include <WiFi.h>
 #include <WiFiNTP.h>
 #endif
@@ -69,10 +69,10 @@ namespace TimeHelper
     inline time_t getTime(uint32_t *mb_ts, uint32_t *mb_ts_offset)
     {
         uint32_t &tm = *mb_ts;
-#if defined(ENABLE_EXTERNAL_CLIENT) || defined(PICO_RP2040)
+#if defined(ENABLE_EXTERNAL_CLIENT) || defined(MB_ARDUINO_PICO)
         tm = *mb_ts_offset + millis() / 1000;
 
-#if defined(PICO_RP2040)
+#if defined(MB_ARDUINO_PICO)
         if (tm < time(nullptr))
             tm = time(nullptr);
 #endif
@@ -157,9 +157,9 @@ namespace TimeHelper
 
 #else
 
-#if defined(ESP32) || defined(ESP8266) || defined(PICO_RP2040)
+#if defined(ESP32) || defined(ESP8266) || defined(MB_ARDUINO_PICO)
 
-#if defined(PICO_RP2040)
+#if defined(MB_ARDUINO_PICO)
                 NTP.begin("pool.ntp.org", "time.nist.gov");
                 NTP.waitSet();
 

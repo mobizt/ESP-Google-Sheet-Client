@@ -3,6 +3,7 @@
 #define GS_SD_HELPER_H_
 
 #include <Arduino.h>
+#include "mbfs/MB_MCU.h"
 #include "ESP_Google_Sheet_Client.h"
 
 // If SD Card used for storage, assign SD card type and FS used in src/ESP_Google_Sheet_Client_FS_Config.h and
@@ -18,7 +19,7 @@
 #define SPI_CLOCK_IN_MHz 16
 #elif defined(ESP8266)
 #define SPI_CS_PIN 15
-#elif defined(PICO_RP2040)
+#elif defined(MB_ARDUINO_PICO)
 // Use SPI 1's SS (GPIO 13) port as CS for SPI
 #define SPI_CS_PIN PIN_SPI1_SS
 #endif
@@ -37,7 +38,7 @@ SPIClass spi;
 
 SDFSConfig sdFSConfig(SPI_CS_PIN, SPI_HALF_SPEED);
 
-#elif defined(PICO_RP2040)
+#elif defined(MB_ARDUINO_PICO)
 
 /** Use Pico SPI 1 for SPI
  * MISO  GPIO 12
@@ -102,7 +103,7 @@ bool SD_Card_Mounting()
         return true;
     }
 
-#elif defined(PICO_RP2040)
+#elif defined(MB_ARDUINO_PICO)
 
     Serial.print("\nMounting SD Card... ");
 

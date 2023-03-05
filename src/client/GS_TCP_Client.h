@@ -1,7 +1,31 @@
 
+/**
+ * The MIT License (MIT)
+ * Copyright (c) 2023 K. Suwatchai (Mobizt)
+ *
+ *
+ * Permission is hereby granted, free of charge, to any person returning a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
 #ifndef GS_TCP_Client_H
 #define GS_TCP_Client_H
 #include <Arduino.h>
+#include "mbfs/MB_MCU.h"
 #include "GS_Error.h"
 #include "GS_Const.h"
 #include "mbfs/MB_FS.h"
@@ -42,7 +66,7 @@ extern "C"
 #include <CertStoreBearSSL.h>
 #define ESP_SIGNER_ESP_SSL_CLIENT BearSSL::WiFiClientSecure
 
-#elif defined(PICO_RP2040)
+#elif defined(MB_ARDUINO_PICO)
 
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -71,7 +95,7 @@ public:
 
 #if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
 
-#if defined(ESP8266) || defined(PICO_RP2040)
+#if defined(ESP8266) || defined(MB_ARDUINO_PICO)
     client->setBufferSizes(bsslRxSize, bsslTxSize);
 #endif
 
@@ -80,7 +104,7 @@ public:
       certType = gs_cert_type_data;
 #if defined(ESP32)
       client->setCACert(caCert);
-#elif defined(ESP8266) || defined(PICO_RP2040)
+#elif defined(ESP8266) || defined(MB_ARDUINO_PICO)
       x509 = new X509List(caCert);
       client->setTrustAnchors(x509);
 #endif
@@ -91,7 +115,7 @@ public:
       client->stop();
 #if defined(ESP32)
       client->setCACert(NULL);
-#elif defined(ESP8266) || defined(PICO_RP2040)
+#elif defined(ESP8266) || defined(MB_ARDUINO_PICO)
       client->setNoDelay(true);
 #endif
       setInsecure();
@@ -103,7 +127,7 @@ public:
   {
 #if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
 
-#if defined(ESP8266) || defined(PICO_RP2040)
+#if defined(ESP8266) || defined(MB_ARDUINO_PICO)
     client->setBufferSizes(bsslRxSize, bsslTxSize);
 #endif
 
@@ -154,7 +178,7 @@ public:
           mbfs->close(storageType);
         }
 
-#elif defined(ESP8266) || defined(PICO_RP2040)
+#elif defined(ESP8266) || defined(MB_ARDUINO_PICO)
         uint8_t *der = MemoryHelper::createBuffer<uint8_t *>(mbfs, len);
         if (mbfs->available(storageType))
           mbfs->read(storageType, der, len);
@@ -180,7 +204,7 @@ public:
     client->setInsecure();
 #endif
 #endif
-#elif defined(ESP8266) || defined(PICO_RP2040)
+#elif defined(ESP8266) || defined(MB_ARDUINO_PICO)
     client->setInsecure();
 #endif
 
@@ -190,7 +214,7 @@ public:
   void setBufferSizes(int rx, int tx)
   {
 #if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-#if defined(ESP_8266) || defined(PICO_RP2040)
+#if defined(ESP_8266) || defined(MB_ARDUINO_PICO)
     bsslRxSize = rx;
     bsslTxSize = tx;
     if (client)
@@ -221,7 +245,7 @@ public:
       goto ex;
 #endif
 
-#elif defined(PICO_RP2040)
+#elif defined(MB_ARDUINO_PICO)
 
 #endif
 
@@ -277,7 +301,7 @@ public:
 #if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
 #if defined(ESP32)
     return client->setTimeout(timeoutmSec / 1000);
-#elif defined(ESP8266) || defined(PICO_RP2040)
+#elif defined(ESP8266) || defined(MB_ARDUINO_PICO)
     client->setTimeout(timeoutmSec);
 #endif
 #endif
@@ -329,7 +353,7 @@ public:
       ETH.linkUp();
       return true;
     }
-#elif defined(ESP8266) || defined(PICO_RP2040)
+#elif defined(ESP8266) || defined(MB_ARDUINO_PICO)
     if (!eth && config)
       eth = &(config->spi_ethernet_module);
 
@@ -361,7 +385,7 @@ public:
     }
 #endif
 
-#elif defined(PICO_RP2040)
+#elif defined(MB_ARDUINO_PICO)
 
 #endif
 
@@ -629,7 +653,7 @@ private:
   gauth_cfg_t *config = nullptr;
   MB_FS *mbfs = nullptr;
 #if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-#if defined(ESP8266) || defined(PICO_RP2040)
+#if defined(ESP8266) || defined(MB_ARDUINO_PICO)
 #if defined(ESP8266)
   uint16_t bsslRxSize = 512;
   uint16_t bsslTxSize = 512;

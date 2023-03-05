@@ -42,7 +42,7 @@
 #include "SPI.h"
 
 #if defined(ESP32) && __has_include(<sys/stat.h>)
-#if MBFS_FLASH_FS == LittleFS
+#ifdef _LITTLEFS_H_
 #define MB_FS_USE_POSIX_STAT
 #include <sys/stat.h>
 namespace mb_fs_ns

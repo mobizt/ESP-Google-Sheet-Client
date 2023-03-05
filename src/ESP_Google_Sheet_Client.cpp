@@ -1,5 +1,5 @@
 /**
- * Google Sheet Client, GS_Google_Sheet_Client.cpp v1.3.4
+ * Google Sheet Client, GS_Google_Sheet_Client.cpp v1.3.5
  *
  * This library supports Espressif ESP8266 and ESP32 MCUs
  *

@@ -1,6 +1,6 @@
 {
   "name": "ESP-Google-Sheet-Client",
-  "version": "1.3.4",
+  "version": "1.3.5",
   "keywords": "communication, REST, esp32, esp8266, raspberrypi, arduino",
   "description": "Arduino Google Sheet REST client library for ESP8266, ESP32 and Raspberry Pi Pico (RP2040). This library allows devices to communicate with Google Sheet API to read, edit and delete the spreadsheets",
   "repository": {

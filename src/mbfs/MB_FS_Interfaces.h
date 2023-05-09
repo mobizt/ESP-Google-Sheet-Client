@@ -59,7 +59,7 @@
 #endif
 
 // For MB_String
-#if defined(FIREBASE_USE_PSRAM)
+#if defined(ESP_SIGNER_USE_PSRAM)
 #define MB_STRING_USE_PSRAM
 #endif
 

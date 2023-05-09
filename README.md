@@ -4,8 +4,11 @@
 Arduino Google Sheet Client Library for ESP32, ESP8266 and Raspberry Pi Pico (RP2040).
 
 
-This library works with Google Sheet APIs directly using the Service Account which is reliable and safe as it does not use AppScrips and other dirty HTTP hacks to work.
+This library works with Google Sheet APIs directly using the Service Account which is safe and reliable as it does not require Google AppScrips and other dirty HTTP hacks to work.
 
+
+There is the way of hacking to post the data to Google Forms’s linked spreadsheet but it is inefficient and may not work when the form data model changed. 
+ 
 
 Devices will be able to read, update, append and clear sheet values. Create, read, list, and delete the spreadsheet are also supported.
 

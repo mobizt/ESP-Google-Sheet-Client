@@ -40,7 +40,9 @@ extern "C"
 
 #include <WiFi.h>
 #include <WiFiClient.h>
+#if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
 #include <ETH.h>
+#endif
 #include <WiFiClientSecure.h>
 #if __has_include(<esp_idf_version.h>)
 #include <esp_idf_version.h>

@@ -862,13 +862,13 @@ bool GAuthManager::createJWT()
         config->signer.tokens.status = token_status_on_signing;
 
         // RSA private key
-        BearSSL::PrivateKey *pk = nullptr;
+        PrivateKey *pk = nullptr;
         Utils::idle();
         // parse priv key
         if (config->signer.pk.length() > 0)
-            pk = new BearSSL::PrivateKey((const char *)config->signer.pk.c_str());
+            pk = new PrivateKey((const char *)config->signer.pk.c_str());
         else if (strlen_P(config->service_account.data.private_key) > 0)
-            pk = new BearSSL::PrivateKey((const char *)config->service_account.data.private_key);
+            pk = new PrivateKey((const char *)config->service_account.data.private_key);
 
         if (!pk)
         {

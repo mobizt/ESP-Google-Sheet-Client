@@ -305,21 +305,12 @@ struct gauth_token_signer_resources_t
     MB_String pk;
     size_t hashSize = 32; // SHA256 size (256 bits or 32 bytes)
     size_t signatureSize = 256;
-#if defined(ESP32)
-    uint8_t *hash = nullptr;
-#elif defined(ESP8266) || defined(MB_ARDUINO_PICO)
     char *hash = nullptr;
-#endif
     unsigned char *signature = nullptr;
     MB_String encHeader;
     MB_String encPayload;
     MB_String encHeadPayload;
     MB_String encSignature;
-#if defined(ESP32)
-    mbedtls_pk_context *pk_ctx = nullptr;
-    mbedtls_entropy_context *entropy_ctx = nullptr;
-    mbedtls_ctr_drbg_context *ctr_drbg_ctx = nullptr;
-#endif
     gauth_auth_token_info_t tokens;
 };
 

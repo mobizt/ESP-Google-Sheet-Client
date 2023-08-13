@@ -1,32 +1,37 @@
 
-#ifndef GS_CONST_H
-#define GS_CONST_H
+#ifndef ESP_GOOGLE_SHEET_CLIENT_CONST_H
+#define ESP_GOOGLE_SHEET_CLIENT_CONST_H
 
-#define GS_DEFAULT_AUTH_TOKEN_PRE_REFRESH_SECONDS 5 * 60
+#define ESP_GOOGLE_SHEET_CLIENT_DEFAULT_AUTH_TOKEN_PRE_REFRESH_SECONDS 5 * 60
 
-#define GS_DEFAULT_AUTH_TOKEN_EXPIRED_SECONDS 3600
+#define ESP_GOOGLE_SHEET_CLIENT_DEFAULT_AUTH_TOKEN_EXPIRED_SECONDS 3600
 
-#define GS_DEFAULT_REQUEST_TIMEOUT 2000
+#define ESP_GOOGLE_SHEET_CLIENT_DEFAULT_REQUEST_TIMEOUT 2000
 
-#define GS_DEFAULT_TS 1618971013
+#define ESP_GOOGLE_SHEET_CLIENT_DEFAULT_TS 1618971013
 
-#define GS_TIME_SYNC_INTERVAL 5000
+#define ESP_GOOGLE_SHEET_CLIENT_TIME_SYNC_INTERVAL 5000
 
-#define GS_MIN_TOKEN_GENERATION_ERROR_INTERVAL 5 * 1000
+#define ESP_GOOGLE_SHEET_CLIENT_MIN_TOKEN_GENERATION_ERROR_INTERVAL 5 * 1000
 
-#define GS_MIN_NTP_SERVER_SYNC_TIME_OUT 15 * 1000
+#define ESP_GOOGLE_SHEET_CLIENT_MIN_NTP_SERVER_SYNC_TIME_OUT 15 * 1000
 
-#define GS_MIN_TOKEN_GENERATION_BEGIN_STEP_INTERVAL 300
+#define ESP_GOOGLE_SHEET_CLIENT_MIN_TOKEN_GENERATION_BEGIN_STEP_INTERVAL 300
 
-#define GS_MIN_SERVER_RESPONSE_TIMEOUT 1 * 1000
-#define GS_DEFAULT_SERVER_RESPONSE_TIMEOUT 5 * 1000
-#define GS_MAX_SERVER_RESPONSE_TIMEOUT 60 * 1000
+#define ESP_GOOGLE_SHEET_CLIENT_MIN_SERVER_RESPONSE_TIMEOUT 1 * 1000
+#define ESP_GOOGLE_SHEET_CLIENT_DEFAULT_SERVER_RESPONSE_TIMEOUT 5 * 1000
+#define ESP_GOOGLE_SHEET_CLIENT_MAX_SERVER_RESPONSE_TIMEOUT 60 * 1000
 
-#define GS_MIN_WIFI_RECONNECT_TIMEOUT 10 * 1000
-#define GS_MAX_WIFI_RECONNECT_TIMEOUT 5 * 60 * 1000
+#define ESP_GOOGLE_SHEET_CLIENT_MIN_WIFI_RECONNECT_TIMEOUT 10 * 1000
+#define ESP_GOOGLE_SHEET_CLIENT_MAX_WIFI_RECONNECT_TIMEOUT 5 * 60 * 1000
 
 #include <Arduino.h>
 #include "mbfs/MB_MCU.h"
+#include "GS_Error.h"
+#include "GS_Network.h"
+#if __has_include(<FS.h>)
+#include <FS.h>
+#endif
 
 #if defined(ESP32) && !defined(ESP_ARDUINO_VERSION) /* ESP32 core < v2.0.x */
 #include <sys/time.h>
@@ -36,7 +41,6 @@
 
 #include "ESP_Google_Sheet_Client_FS_Config.h"
 #include "mbfs/MB_FS.h"
-#include "auth/MB_NTP.h"
 #if defined(ESP32)
 #include "mbedtls/pk.h"
 #include "mbedtls/entropy.h"
@@ -68,24 +72,24 @@
 #include <LwipIntfDev.h>
 #endif
 
-#if __has_include(<ENC28J60lwIP.h>) && defined(ENABLE_ESP8266_ENC28J60_ETH)
+#if __has_include(<ENC28J60lwIP.h>) && defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_ESP8266_ENC28J60_ETH)
 #define INC_ENC28J60_LWIP
 #include <ENC28J60lwIP.h>
-#define ESP8266_SPI_ETH_MODULE ENC28J60lwIP
+#define ESP_GOOGLE_SHEET_CLIENT_ESP8266_SPI_ETH_MODULE ENC28J60lwIP
 #endif
 
-#if __has_include(<W5100lwIP.h>) && defined(ENABLE_ESP8266_W5100_ETH)
+#if __has_include(<W5100lwIP.h>) && defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_ESP8266_W5100_ETH)
 
 #define INC_W5100_LWIP
 // PIO compilation error
 #include <W5100lwIP.h>
-#define ESP8266_SPI_ETH_MODULE Wiznet5100lwIP
+#define ESP_GOOGLE_SHEET_CLIENT_ESP8266_SPI_ETH_MODULE Wiznet5100lwIP
 #endif
 
-#if __has_include(<W5500lwIP.h>) && defined(ENABLE_ESP8266_W5500_ETH)
+#if __has_include(<W5500lwIP.h>) && defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_ESP8266_W5500_ETH)
 #define INC_W5500_LWIP
 #include <W5500lwIP.h>
-#define ESP8266_SPI_ETH_MODULE Wiznet5500lwIP
+#define ESP_GOOGLE_SHEET_CLIENT_ESP8266_SPI_ETH_MODULE Wiznet5500lwIP
 #endif
 
 #endif
@@ -97,22 +101,15 @@ typedef enum
     esp_google_sheet_file_storage_type_sd
 } esp_google_sheet_file_storage_type;
 
-typedef enum
-{
-    gs_tcp_client_type_undefined,
-    gs_tcp_client_type_internal,
-    gs_tcp_client_type_external
-
-} gs_tcp_client_type;
 
 typedef enum
 {
-    gs_cert_type_undefined = -1,
-    gs_cert_type_none = 0,
-    gs_cert_type_data,
-    gs_cert_type_file
+     esp_google_sheet_cert_type_undefined = -1,
+     esp_google_sheet_cert_type_none = 0,
+     esp_google_sheet_cert_type_data,
+     esp_google_sheet_cert_type_file
 
-} gs_cert_type;
+}  esp_google_sheet_cert_type;
 
 enum gauth_auth_token_status
 {
@@ -141,7 +138,7 @@ enum gauth_jwt_generation_step
     gauth_jwt_generation_step_exchange
 };
 
-enum gs_request_method
+enum  esp_google_sheet_request_method
 {
     http_undefined,
     http_put,
@@ -151,28 +148,33 @@ enum gs_request_method
     http_delete
 };
 
-struct gs_no_eth_module_t
+struct  esp_google_sheet_no_eth_module_t
 {
 };
 
 #ifndef ESP8266_SPI_ETH_MODULE
-#define ESP8266_SPI_ETH_MODULE gs_no_eth_module_t
+#define ESP8266_SPI_ETH_MODULE  esp_google_sheet_no_eth_module_t
 #endif
 
-struct gs_wifi_credential_t
+struct  esp_google_sheet_wifi_credential_t
 {
     MB_String ssid;
     MB_String password;
 };
-
-class esp_gs_wifi
+class  esp_google_sheet_wifi
 {
+    friend class ESP_GOOGLE_SHEET_CLIENT_TCP_Client;
+
 public:
-    esp_gs_wifi() { clearAP(); };
-    ~esp_gs_wifi() { credentials.clear(); };
+     esp_google_sheet_wifi(){};
+    ~ esp_google_sheet_wifi()
+    {
+        clearAP();
+        clearMulti();
+    };
     void addAP(const String &ssid, const String &password)
     {
-        gs_wifi_credential_t data;
+         esp_google_sheet_wifi_credential_t data;
         data.ssid = ssid;
         data.password = password;
         credentials.push_back(data);
@@ -183,16 +185,60 @@ public:
     }
     size_t size() { return credentials.size(); }
 
-    gs_wifi_credential_t operator[](size_t index)
+     esp_google_sheet_wifi_credential_t operator[](size_t index)
     {
         return credentials[index];
     }
 
-    private:
-    MB_List<gs_wifi_credential_t> credentials;
+private:
+    MB_List< esp_google_sheet_wifi_credential_t> credentials;
+#if defined(ESP_GOOGLE_SHEET_CLIENT_HAS_WIFIMULTI)
+    WiFiMulti *multi = nullptr;
+#endif
+    void reconnect()
+    {
+        if (credentials.size())
+        {
+            disconnect();
+            connect();
+        }
+    }
+
+    void connect()
+    {
+#if defined(ESP_GOOGLE_SHEET_CLIENT_HAS_WIFIMULTI)
+
+        clearMulti();
+        multi = new WiFiMulti();
+        for (size_t i = 0; i < credentials.size(); i++)
+            multi->addAP(credentials[i].ssid.c_str(), credentials[i].password.c_str());
+
+        if (credentials.size() > 0)
+            multi->run();
+
+#elif defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE)
+        WiFi.begin((CONST_STRING_CAST)credentials[0].ssid.c_str(), credentials[0].password.c_str());
+#endif
+    }
+
+    void disconnect()
+    {
+#if defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE)
+        WiFi.disconnect();
+#endif
+    }
+
+    void clearMulti()
+    {
+#if defined(ESP_GOOGLE_SHEET_CLIENT_HAS_WIFIMULTI)
+        if (multi)
+            delete multi;
+        multi = nullptr;
+#endif
+    }
 };
 
-struct gs_url_info_t
+struct  esp_google_sheet_url_info_t
 {
     MB_String host;
     MB_String uri;
@@ -251,10 +297,10 @@ struct gauth_token_signer_resources_t
     bool tokenTaskRunning = false;
     /* last token request milliseconds count */
     unsigned long lastReqMillis = 0;
-    unsigned long preRefreshSeconds = GS_DEFAULT_AUTH_TOKEN_PRE_REFRESH_SECONDS;
-    unsigned long expiredSeconds = GS_DEFAULT_AUTH_TOKEN_EXPIRED_SECONDS;
+    unsigned long preRefreshSeconds = ESP_GOOGLE_SHEET_CLIENT_DEFAULT_AUTH_TOKEN_PRE_REFRESH_SECONDS;
+    unsigned long expiredSeconds = ESP_GOOGLE_SHEET_CLIENT_DEFAULT_AUTH_TOKEN_EXPIRED_SECONDS;
     /* request time out period (interval) */
-    unsigned long reqTO = GS_DEFAULT_REQUEST_TIMEOUT;
+    unsigned long reqTO = ESP_GOOGLE_SHEET_CLIENT_DEFAULT_REQUEST_TIMEOUT;
     MB_String customHeaders;
     MB_String pk;
     size_t hashSize = 32; // SHA256 size (256 bits or 32 bytes)
@@ -279,14 +325,14 @@ struct gauth_token_signer_resources_t
 
 typedef void (*TokenStatusCallback)(TokenInfo);
 
-struct gs_chunk_state_info
+struct  esp_google_sheet_chunk_state_info
 {
     int state = 0;
     int chunkedSize = 0;
     int dataLen = 0;
 };
 
-struct gs_tcp_response_handler_t
+struct  esp_google_sheet_tcp_response_handler_t
 {
     // the chunk index of all data that is being process
     int chunkIdx = 0;
@@ -329,7 +375,7 @@ struct gs_tcp_response_handler_t
     // the tcp client pointer
     Client *client = nullptr;
     // the chunk state info
-    gs_chunk_state_info chunkState;
+     esp_google_sheet_chunk_state_info chunkState;
 
 public:
     int available()
@@ -340,7 +386,7 @@ public:
     }
 };
 
-struct gs_server_response_data_t
+struct  esp_google_sheet_server_response_data_t
 {
     int httpCode = 0;
     // Must not be negative
@@ -366,7 +412,7 @@ struct gs_server_response_data_t
 };
 
 template <typename T>
-struct gs_base64_io_t
+struct  esp_google_sheet_base64_io_t
 {
     // the total bytes of data in output buffer
     int bufWrite = 0;
@@ -454,7 +500,7 @@ typedef struct gauth_spi_ethernet_module_t
 #endif
 } SPI_ETH_Module;
 
-struct gauth_cfg_t
+struct esp_google_sheet_auth_cfg_t
 {
     uint32_t mb_ts = 0;
 
@@ -474,18 +520,18 @@ struct gauth_cfg_t
     gauth_token_info_t tokenInfo;
     gauth_auth_token_error_t error;
 
-    struct esp_gs_wifi wifi;
+    struct esp_google_sheet_wifi wifi;
 };
 
 #if !defined(__AVR__)
 typedef std::function<void(void)> callback_function_t;
 #endif
 
-typedef void (*GS_NetworkConnectionRequestCallback)(void);
-typedef void (*GS_NetworkStatusRequestCallback)(void);
-typedef void (*GS_ResponseCallback)(const char *);
+typedef void (*ESP_GOOGLE_SHEET_CLIENT_NetworkConnectionRequestCallback)(void);
+typedef void (*ESP_GOOGLE_SHEET_CLIENT_NetworkStatusRequestCallback)(void);
+typedef void (*ESP_GOOGLE_SHEET_CLIENT_ResponseCallback)(const char *);
 
-static const unsigned char gs_base64_table[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static const unsigned char  esp_google_sheet_base64_table[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 static const char gauth_pgm_str_1[] PROGMEM = "type";
 static const char gauth_pgm_str_2[] PROGMEM = "service_account";
@@ -532,54 +578,54 @@ static const char gauth_pgm_str_43[] PROGMEM = "error_description";
 static const char gauth_pgm_str_44[] PROGMEM = "access_token";
 static const char gauth_pgm_str_45[] PROGMEM = "Bearer ";
 
-static const char gs_pgm_str_1[] PROGMEM = "\r\n";
-static const char gs_pgm_str_2[] PROGMEM = ".";
-static const char gs_pgm_str_3[] PROGMEM = "googleapis.com";
-static const char gs_pgm_str_4[] PROGMEM = "Host: ";
-static const char gs_pgm_str_5[] PROGMEM = "Content-Type: ";
-static const char gs_pgm_str_6[] PROGMEM = "Content-Length: ";
-static const char gs_pgm_str_7[] PROGMEM = "User-Agent: ESP\r\n";
-static const char gs_pgm_str_8[] PROGMEM = "Connection: keep-alive\r\n";
-static const char gs_pgm_str_9[] PROGMEM = "Connection: close\r\n";
-static const char gs_pgm_str_10[] PROGMEM = "GET";
-static const char gs_pgm_str_11[] PROGMEM = "POST";
-static const char gs_pgm_str_12[] PROGMEM = "PATCH";
-static const char gs_pgm_str_13[] PROGMEM = "DELETE";
-static const char gs_pgm_str_14[] PROGMEM = "PUT";
-static const char gs_pgm_str_15[] PROGMEM = " ";
-static const char gs_pgm_str_16[] PROGMEM = " HTTP/1.1\r\n";
-static const char gs_pgm_str_17[] PROGMEM = "Authorization: ";
-static const char gs_pgm_str_18[] PROGMEM = "Bearer ";
-static const char gs_pgm_str_19[] PROGMEM = "true";
-static const char gs_pgm_str_20[] PROGMEM = "Connection: ";
-static const char gs_pgm_str_21[] PROGMEM = "Content-Type: ";
-static const char gs_pgm_str_22[] PROGMEM = "Content-Length: ";
-static const char gs_pgm_str_23[] PROGMEM = "ETag: ";
-static const char gs_pgm_str_24[] PROGMEM = "Transfer-Encoding: ";
-static const char gs_pgm_str_25[] PROGMEM = "chunked";
-static const char gs_pgm_str_26[] PROGMEM = "Location: ";
-static const char gs_pgm_str_27[] PROGMEM = "HTTP/1.1 ";
-static const char gs_pgm_str_28[] PROGMEM = "?";
-static const char gs_pgm_str_29[] PROGMEM = "&";
-static const char gs_pgm_str_30[] PROGMEM = "=";
-static const char gs_pgm_str_31[] PROGMEM = "/";
-static const char gs_pgm_str_32[] PROGMEM = "https://";
-static const char gs_pgm_str_33[] PROGMEM = "https://%[^/]/%s";
-static const char gs_pgm_str_34[] PROGMEM = "http://%[^/]/%s";
-static const char gs_pgm_str_35[] PROGMEM = "%[^/]/%s";
-static const char gs_pgm_str_36[] PROGMEM = "%[^?]?%s";
-static const char gs_pgm_str_37[] PROGMEM = "auth=";
-static const char gs_pgm_str_38[] PROGMEM = "%[^&]";
-static const char gs_pgm_str_39[] PROGMEM = "undefined";
-static const char gs_pgm_str_40[] PROGMEM = "OAuth2.0 access token";
-static const char gs_pgm_str_41[] PROGMEM = "uninitialized";
-static const char gs_pgm_str_42[] PROGMEM = "on initializing";
-static const char gs_pgm_str_43[] PROGMEM = "on signing";
-static const char gs_pgm_str_44[] PROGMEM = "on exchange request";
-static const char gs_pgm_str_45[] PROGMEM = "on refreshing";
-static const char gs_pgm_str_46[] PROGMEM = "error";
-static const char gs_pgm_str_47[] PROGMEM = "code: ";
-static const char gs_pgm_str_48[] PROGMEM = ", message: ";
-static const char gs_pgm_str_49[] PROGMEM = "ready";
+static const char  esp_google_sheet_pgm_str_1[] PROGMEM = "\r\n";
+static const char  esp_google_sheet_pgm_str_2[] PROGMEM = ".";
+static const char  esp_google_sheet_pgm_str_3[] PROGMEM = "googleapis.com";
+static const char  esp_google_sheet_pgm_str_4[] PROGMEM = "Host: ";
+static const char  esp_google_sheet_pgm_str_5[] PROGMEM = "Content-Type: ";
+static const char  esp_google_sheet_pgm_str_6[] PROGMEM = "Content-Length: ";
+static const char  esp_google_sheet_pgm_str_7[] PROGMEM = "User-Agent: ESP\r\n";
+static const char  esp_google_sheet_pgm_str_8[] PROGMEM = "Connection: keep-alive\r\n";
+static const char  esp_google_sheet_pgm_str_9[] PROGMEM = "Connection: close\r\n";
+static const char  esp_google_sheet_pgm_str_10[] PROGMEM = "GET";
+static const char  esp_google_sheet_pgm_str_11[] PROGMEM = "POST";
+static const char  esp_google_sheet_pgm_str_12[] PROGMEM = "PATCH";
+static const char  esp_google_sheet_pgm_str_13[] PROGMEM = "DELETE";
+static const char  esp_google_sheet_pgm_str_14[] PROGMEM = "PUT";
+static const char  esp_google_sheet_pgm_str_15[] PROGMEM = " ";
+static const char  esp_google_sheet_pgm_str_16[] PROGMEM = " HTTP/1.1\r\n";
+static const char  esp_google_sheet_pgm_str_17[] PROGMEM = "Authorization: ";
+static const char  esp_google_sheet_pgm_str_18[] PROGMEM = "Bearer ";
+static const char  esp_google_sheet_pgm_str_19[] PROGMEM = "true";
+static const char  esp_google_sheet_pgm_str_20[] PROGMEM = "Connection: ";
+static const char  esp_google_sheet_pgm_str_21[] PROGMEM = "Content-Type: ";
+static const char  esp_google_sheet_pgm_str_22[] PROGMEM = "Content-Length: ";
+static const char  esp_google_sheet_pgm_str_23[] PROGMEM = "ETag: ";
+static const char  esp_google_sheet_pgm_str_24[] PROGMEM = "Transfer-Encoding: ";
+static const char  esp_google_sheet_pgm_str_25[] PROGMEM = "chunked";
+static const char  esp_google_sheet_pgm_str_26[] PROGMEM = "Location: ";
+static const char  esp_google_sheet_pgm_str_27[] PROGMEM = "HTTP/1.1 ";
+static const char  esp_google_sheet_pgm_str_28[] PROGMEM = "?";
+static const char  esp_google_sheet_pgm_str_29[] PROGMEM = "&";
+static const char  esp_google_sheet_pgm_str_30[] PROGMEM = "=";
+static const char  esp_google_sheet_pgm_str_31[] PROGMEM = "/";
+static const char  esp_google_sheet_pgm_str_32[] PROGMEM = "https://";
+static const char  esp_google_sheet_pgm_str_33[] PROGMEM = "https://%[^/]/%s";
+static const char  esp_google_sheet_pgm_str_34[] PROGMEM = "http://%[^/]/%s";
+static const char  esp_google_sheet_pgm_str_35[] PROGMEM = "%[^/]/%s";
+static const char  esp_google_sheet_pgm_str_36[] PROGMEM = "%[^?]?%s";
+static const char  esp_google_sheet_pgm_str_37[] PROGMEM = "auth=";
+static const char  esp_google_sheet_pgm_str_38[] PROGMEM = "%[^&]";
+static const char  esp_google_sheet_pgm_str_39[] PROGMEM = "undefined";
+static const char  esp_google_sheet_pgm_str_40[] PROGMEM = "OAuth2.0 access token";
+static const char  esp_google_sheet_pgm_str_41[] PROGMEM = "uninitialized";
+static const char  esp_google_sheet_pgm_str_42[] PROGMEM = "on initializing";
+static const char  esp_google_sheet_pgm_str_43[] PROGMEM = "on signing";
+static const char  esp_google_sheet_pgm_str_44[] PROGMEM = "on exchange request";
+static const char  esp_google_sheet_pgm_str_45[] PROGMEM = "on refreshing";
+static const char  esp_google_sheet_pgm_str_46[] PROGMEM = "error";
+static const char  esp_google_sheet_pgm_str_47[] PROGMEM = "code: ";
+static const char  esp_google_sheet_pgm_str_48[] PROGMEM = ", message: ";
+static const char  esp_google_sheet_pgm_str_49[] PROGMEM = "ready";
 
 #endif

@@ -1,9 +1,9 @@
 /**
- * Google Sheet Client, GS_Google_Sheet_Client.cpp v1.3.6
+ * Google Sheet Client, ESP_GOOGLE_SHEET_CLIENT_Google_Sheet_Client.cpp v1.4.0
  *
  * This library supports Espressif ESP8266 and ESP32 MCUs
  *
- * Created June 19, 2023
+ * Created August 13, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -27,8 +27,8 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef GSheetClass_CPP
-#define GSheetClass_CPP
+#ifndef ESP_GOOGLE_SHEET_CLIEN_CPP
+#define ESP_GOOGLE_SHEET_CLIEN_CPP
 
 #include "ESP_Google_Sheet_Client.h"
 
@@ -109,23 +109,20 @@ void GSheetClass::setPrerefreshSeconds(uint16_t seconds)
 
 bool GSheetClass::setClock(float gmtOffset)
 {
-    return TimeHelper::syncClock(&authMan.ntpClient, &mb_ts, &mb_ts_offset, gmtOffset, &config);
+    return TimeHelper::syncClock(&mb_ts, &mb_ts_offset, gmtOffset, &config);
 }
 
-#if defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-void GSheetClass::setClient(Client *client, GS_NetworkConnectionRequestCallback networkConnectionCB,
-                            GS_NetworkStatusRequestCallback networkStatusCB)
+void GSheetClass::setClient(Client *client, ESP_GOOGLE_SHEET_CLIENT_NetworkConnectionRequestCallback networkConnectionCB,
+                            ESP_GOOGLE_SHEET_CLIENT_NetworkStatusRequestCallback networkStatusCB)
 {
     authMan.tcpClient->setClient(client, networkConnectionCB, networkStatusCB);
     authMan.tcpClient->setCACert(nullptr);
 }
 
-void GSheetClass::setUDPClient(UDP *client, float gmtOffset)
+void GSheetClass::setGSMClient(Client *client, void *modem, const char *pin, const char *apn, const char *user, const char *password)
 {
-    authMan.udp = client;
-    authMan.gmtOffset = gmtOffset;
+    authMan.tcpClient->setGSMClient(client, modem, pin, apn, user, password);
 }
-#endif
 
 bool GSheetClass::beginRequest(MB_String &req, host_type_t host_type)
 {
@@ -245,18 +242,18 @@ bool GSheetClass::setSecure()
         return false;
 
 #if (defined(ESP8266) || defined(MB_ARDUINO_PICO))
-    if (TimeHelper::getTime(&mb_ts, &mb_ts_offset) > GS_DEFAULT_TS)
+    if (TimeHelper::getTime(&mb_ts, &mb_ts_offset) > ESP_GOOGLE_SHEET_CLIENT_DEFAULT_TS)
     {
         config.internal.clock_rdy = true;
         client->setClockStatus(true);
     }
 #endif
 
-    if (client->getCertType() == gs_cert_type_undefined || cert_updated)
+    if (client->getCertType() == esp_google_sheet_cert_type_undefined || cert_updated)
     {
 
         if (!config.internal.clock_rdy && (config.cert.file.length() > 0 || config.cert.data != NULL || cert_addr > 0))
-            TimeHelper::syncClock(&authMan.ntpClient, &mb_ts, &mb_ts_offset, config.internal.gmt_offset, &config);
+            TimeHelper::syncClock(&mb_ts, &mb_ts_offset, config.internal.gmt_offset, &config);
 
         if (config.cert.file.length() == 0)
         {

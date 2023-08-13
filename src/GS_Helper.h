@@ -1,5 +1,5 @@
-#ifndef GS_HELPER_H
-#define GS_HELPER_H
+#ifndef ESP_GOOGLE_SHEET_CLIENT_HELPER_H
+#define ESP_GOOGLE_SHEET_CLIENT_HELPER_H
 
 #include <Arduino.h>
 #include "mbfs/MB_MCU.h"
@@ -65,125 +65,147 @@ namespace MemoryHelper
 
 namespace TimeHelper
 {
-
-    inline time_t getTime(uint32_t *mb_ts, uint32_t *mb_ts_offset)
+    inline uint32_t getTimestamp(int year, int mon, int date, int hour, int mins, int sec)
     {
-        uint32_t &tm = *mb_ts;
-#if defined(ENABLE_EXTERNAL_CLIENT) || defined(MB_ARDUINO_PICO)
-        tm = *mb_ts_offset + millis() / 1000;
-
-#if defined(MB_ARDUINO_PICO)
-        if (tm < time(nullptr))
-            tm = time(nullptr);
-#endif
-
-#elif defined(ESP32) || defined(ESP8266)
-        tm = time(nullptr);
-#endif
-        return tm;
+        struct tm timeinfo;
+        timeinfo.tm_year = year - 1900;
+        timeinfo.tm_mon = mon - 1;
+        timeinfo.tm_mday = date;
+        timeinfo.tm_hour = hour;
+        timeinfo.tm_min = mins;
+        timeinfo.tm_sec = sec;
+        uint32_t ts = mktime(&timeinfo);
+        return ts;
     }
 
-    inline int setTimestamp(time_t ts)
+    inline uint32_t getTime(uint32_t *mb_ts, uint32_t *mb_ts_offset)
     {
-#if defined(ESP32) || defined(ESP8266)
-        struct timeval tm = {ts, 0}; // sec, us
-        return settimeofday((const timeval *)&tm, 0);
-#endif
-        return -1;
-    }
-
-    inline bool setTime(time_t ts, uint32_t *mb_ts, uint32_t *mb_ts_offset)
-    {
-        bool ret = false;
-
-#if defined(ESP32) || defined(ESP8266)
-        ret = setTimestamp(ts) == 0;
-        *mb_ts = time(nullptr);
-#else
-        if (ts > GS_DEFAULT_TS)
-        {
-            *mb_ts_offset = ts - millis() / 1000;
-            *mb_ts = ts;
-            ret = true;
-        }
-#endif
-
-        return ret;
-    }
-
-    inline bool updateClock(MB_NTP *ntp, uint32_t *mb_ts, uint32_t *mb_ts_offset)
-    {
-        uint32_t ts = ntp->getTime(2000 /* wait 10000 ms */);
-        if (ts > 0)
-            *mb_ts_offset = ts - millis() / 1000;
-
-        time_t now = getTime(mb_ts, mb_ts_offset);
-
-        bool rdy = now > GS_DEFAULT_TS;
-
-#if defined(ESP32) || defined(ESP8266)
-        if (rdy && time(nullptr) < now)
-            setTime(now, mb_ts, mb_ts_offset);
-#endif
-
-        return rdy;
-    }
-
-    inline bool syncClock(MB_NTP *ntp, uint32_t *mb_ts, uint32_t *mb_ts_offset, float gmtOffset, gauth_cfg_t *config)
-    {
-
-        if (!config)
-            return false;
-
-        time_t now = getTime(mb_ts, mb_ts_offset);
-
-        config->internal.clock_rdy = (unsigned long)now > GS_DEFAULT_TS;
-
-        if (config->internal.clock_rdy && gmtOffset == config->internal.gmt_offset)
-            return true;
-
-        if (!config->internal.clock_rdy || gmtOffset != config->internal.gmt_offset)
-        {
-            if (config->internal.clock_rdy && gmtOffset != config->internal.gmt_offset)
-                config->internal.clock_synched = false;
-
-            if (!config->internal.clock_synched)
-            {
-                config->internal.clock_synched = true;
-
-#if defined(ENABLE_EXTERNAL_CLIENT)
-
-                updateClock(ntp, mb_ts, mb_ts_offset);
-
-#else
-
 #if defined(ESP32) || defined(ESP8266) || defined(MB_ARDUINO_PICO)
 
-#if defined(MB_ARDUINO_PICO)
+        if (*mb_ts < time(nullptr))
+            *mb_ts = time(nullptr);
+
+#elif defined(ESP_GOOGLE_SHEET_CLIENT_HAS_WIFI_TIME)
+        if (WiFI_CONNECTED)
+            *mb_ts = WiFi.getTime() > ESP_GOOGLE_SHEET_CLIENT_DEFAULT_TS ? WiFi.getTime() : *mb_ts;
+#else
+        *mb_ts = *mb_ts_offset + millis() / 1000;
+#endif
+        return *mb_ts;
+    }
+
+    inline void syncSysTeme(uint32_t *mb_ts, uint32_t *mb_ts_offset)
+    {
+        getTime(mb_ts, mb_ts_offset);
+
+#if defined(ESP32) || defined(ESP8266) || defined(MB_ARDUINO_PICO)
+        uint32_t &sys_ts = *mb_ts;
+        if (sys_ts < time(nullptr) && time(nullptr) > ESP_GOOGLE_SHEET_CLIENT_DEFAULT_TS)
+        {
+            sys_ts = time(nullptr);
+        }
+#endif
+    }
+
+    inline int setTimestamp(time_t ts, uint32_t *mb_ts_offset)
+    {
+#if defined(MB_ARDUINO_ESP)
+        struct timeval tm; // sec, us
+        tm.tv_sec = ts;
+        tm.tv_usec = 0;
+        return settimeofday((const struct timeval *)&tm, 0);
+#else
+        *mb_ts_offset = ts - millis() / 1000;
+        return 1;
+#endif
+    }
+
+    inline bool clockReady(uint32_t *mb_ts, uint32_t *mb_ts_offset, bool withUpdate = false)
+    {
+
+        bool clock_rdy = false;
+
+        uint32_t &sys_ts = *mb_ts;
+
+        if (!withUpdate)
+            clock_rdy = sys_ts > ESP_GOOGLE_SHEET_CLIENT_DEFAULT_TS;
+        else
+        {
+            getTime(mb_ts, mb_ts_offset);
+
+            syncSysTeme(mb_ts, mb_ts_offset);
+
+            clock_rdy = sys_ts > ESP_GOOGLE_SHEET_CLIENT_DEFAULT_TS;
+
+            // Update system timestamp and its offset when time/timezone changed.
+            if (clock_rdy)
+            {
+                *mb_ts_offset = sys_ts - millis() / 1000;
+            }
+
+#if defined(MB_ARDUINO_ESP)
+            // If system timestamp was set, update the device time
+            if (sys_ts > ESP_GOOGLE_SHEET_CLIENT_DEFAULT_TS && time(nullptr) < sys_ts)
+                setTimestamp(sys_ts, mb_ts_offset);
+#endif
+        }
+
+        return clock_rdy;
+    }
+
+    inline void ntpGetTime(esp_google_sheet_auth_cfg_t *config, uint32_t *mb_ts, float gmtOffset)
+    {
+        uint32_t &sys_ts = *mb_ts;
+
+        config->internal.clock_rdy = sys_ts > ESP_GOOGLE_SHEET_CLIENT_DEFAULT_TS;
+
+        if (config->internal.clock_rdy && gmtOffset == config->internal.gmt_offset)
+            return;
+
+        if (!config->internal.clock_synched)
+        {
+
+            if (WiFI_CONNECTED)
+            {
+
+#if defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_NTP_TIME)
+#if (defined(ESP32) || defined(ESP8266))
+                configTime(gmtOffset * 3600, 0 * 60, "pool.ntp.org", "time.nist.gov");
+#elif defined(ARDUINO_RASPBERRY_PI_PICO_W)
                 NTP.begin("pool.ntp.org", "time.nist.gov");
                 NTP.waitSet();
-
-                now = time(nullptr);
-                if (now > GS_DEFAULT_TS)
-                    *mb_ts_offset = now - millis() / 1000;
-
+#endif
+#endif
+                unsigned long ms = millis();
+                do
+                {
+#if defined(ESP_GOOGLE_SHEET_CLIENT_HAS_WIFI_TIME)
+                    sys_ts = WiFi.getTime() > ESP_GOOGLE_SHEET_CLIENT_DEFAULT_TS ? WiFi.getTime() : sys_ts;
+#elif defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_NTP_TIME)
+                    sys_ts = time(nullptr) > ESP_GOOGLE_SHEET_CLIENT_DEFAULT_TS ? time(nullptr) : sys_ts;
 #else
-                configTime(gmtOffset * 3600, 0, "pool.ntp.org", "time.nist.gov");
+                    break;
 #endif
-
-#endif
-
-#endif
+                    delay(100);
+                } while (millis() - ms < 10000 && sys_ts < ESP_GOOGLE_SHEET_CLIENT_DEFAULT_TS);
             }
         }
 
-        now = getTime(mb_ts, mb_ts_offset);
+        config->internal.clock_rdy = sys_ts > ESP_GOOGLE_SHEET_CLIENT_DEFAULT_TS;
 
-        config->internal.clock_rdy = (unsigned long)now > GS_DEFAULT_TS;
         if (config->internal.clock_rdy)
+        {
             config->internal.gmt_offset = gmtOffset;
+            config->internal.clock_synched = true;
+        }
+    }
 
-        return config->internal.clock_rdy;
+    inline bool syncClock(uint32_t *mb_ts, uint32_t *mb_ts_offset, float gmtOffset, esp_google_sheet_auth_cfg_t *config)
+    {
+
+        ntpGetTime(config, mb_ts, gmtOffset);
+
+        return clockReady(mb_ts, mb_ts_offset, true);
     }
 
 };
@@ -301,7 +323,7 @@ namespace StringHelper
     /* convert string to boolean */
     inline bool str2Bool(const MB_String &v)
     {
-        return v.length() > 0 && strcmp(v.c_str(), pgm2Str(gs_pgm_str_19 /* "true" */)) == 0;
+        return v.length() > 0 && strcmp(v.c_str(), pgm2Str(esp_google_sheet_pgm_str_19 /* "true" */)) == 0;
     }
 
     inline MB_String intStr2Str(const MB_String &v)
@@ -381,10 +403,10 @@ namespace URLHelper
             _key[0] = '&';
 
         if (_key[0] != '?' && _key[0] != '&')
-            url += !hasParam ? gs_pgm_str_28 /* "?" */ : gs_pgm_str_29 /* "&" */;
+            url += !hasParam ? esp_google_sheet_pgm_str_28 /* "?" */ : esp_google_sheet_pgm_str_29 /* "&" */;
 
         if (_key[_key.length() - 1] != '=' && _key.find('=') == MB_String::npos)
-            _key += gs_pgm_str_30; // "="
+            _key += esp_google_sheet_pgm_str_30; // "="
 
         url += _key;
         url += val;
@@ -410,44 +432,44 @@ namespace URLHelper
         if (path.length() > 0)
         {
             if (path[0] != '/')
-                url += gs_pgm_str_31; // "/"
+                url += esp_google_sheet_pgm_str_31; // "/"
         }
         else
-            url += gs_pgm_str_31; // "/"
+            url += esp_google_sheet_pgm_str_31; // "/"
 
         url += path;
     }
 
     inline void host2Url(MB_String &url, MB_String &host)
     {
-        url = gs_pgm_str_32; // "https://"
+        url = esp_google_sheet_pgm_str_32; // "https://"
         url += host;
     }
 
-    inline void parse(MB_FS *mbfs, const MB_String &url, struct gs_url_info_t &info)
+    inline void parse(MB_FS *mbfs, const MB_String &url, struct esp_google_sheet_url_info_t &info)
     {
         char *host = MemoryHelper::createBuffer<char *>(mbfs, url.length());
         char *uri = MemoryHelper::createBuffer<char *>(mbfs, url.length());
         char *auth = MemoryHelper::createBuffer<char *>(mbfs, url.length());
 
         int p1 = 0;
-        int x = sscanf(url.c_str(), pgm2Str(gs_pgm_str_33), host, uri);
-        x ? p1 = 8 : x = sscanf(url.c_str(), pgm2Str(gs_pgm_str_34), host, uri);
-        x ? p1 = 7 : x = sscanf(url.c_str(), pgm2Str(gs_pgm_str_35), host, uri);
+        int x = sscanf(url.c_str(), pgm2Str(esp_google_sheet_pgm_str_33), host, uri);
+        x ? p1 = 8 : x = sscanf(url.c_str(), pgm2Str(esp_google_sheet_pgm_str_34), host, uri);
+        x ? p1 = 7 : x = sscanf(url.c_str(), pgm2Str(esp_google_sheet_pgm_str_35), host, uri);
 
         size_t p2 = 0;
         if (x > 0)
         {
-            p2 = MB_String(host).find(pgm2Str(gs_pgm_str_28), 0);
+            p2 = MB_String(host).find(pgm2Str(esp_google_sheet_pgm_str_28), 0);
             if (p2 != MB_String::npos)
-                x = sscanf(url.c_str() + p1, pgm2Str(gs_pgm_str_36), host, uri);
+                x = sscanf(url.c_str() + p1, pgm2Str(esp_google_sheet_pgm_str_36), host, uri);
         }
 
         if (strlen(uri) > 0)
         {
-            p2 = MB_String(uri).find(pgm2Str(gs_pgm_str_37), 0);
+            p2 = MB_String(uri).find(pgm2Str(esp_google_sheet_pgm_str_37), 0);
             if (p2 != MB_String::npos)
-                x = sscanf(uri + p2 + 5, pgm2Str(gs_pgm_str_38), auth);
+                x = sscanf(uri + p2 + 5, pgm2Str(esp_google_sheet_pgm_str_38), auth);
         }
 
         info.uri = uri;
@@ -566,9 +588,9 @@ namespace JsonHelper
         if (json && val.length() > 0)
         {
             if (isJsonPath(key))
-                json->set(pgm2Str(key), strcmp(val.c_str(), pgm2Str(gs_pgm_str_19)) == 0 ? true : false);
+                json->set(pgm2Str(key), strcmp(val.c_str(), pgm2Str(esp_google_sheet_pgm_str_19)) == 0 ? true : false);
             else
-                json->add(pgm2Str(key), strcmp(val.c_str(), pgm2Str(gs_pgm_str_19)) == 0 ? true : false);
+                json->add(pgm2Str(key), strcmp(val.c_str(), pgm2Str(esp_google_sheet_pgm_str_19)) == 0 ? true : false);
             flag = true;
         }
     }
@@ -738,7 +760,7 @@ namespace Base64Helper
     inline unsigned char *creatBase64EncBuffer(MB_FS *mbfs, bool isURL)
     {
         unsigned char *base64EncBuf = MemoryHelper::createBuffer<unsigned char *>(mbfs, 65);
-        strcpy_P((char *)base64EncBuf, (char *)gs_base64_table);
+        strcpy_P((char *)base64EncBuf, (char *)esp_google_sheet_base64_table);
         if (isURL)
         {
             base64EncBuf[62] = '-';
@@ -751,14 +773,14 @@ namespace Base64Helper
     {
         unsigned char *base64DecBuf = MemoryHelper::createBuffer<unsigned char *>(mbfs, 256, false);
         memset(base64DecBuf, 0x80, 256);
-        for (size_t i = 0; i < sizeof(gs_base64_table) - 1; i++)
-            base64DecBuf[gs_base64_table[i]] = (unsigned char)i;
+        for (size_t i = 0; i < sizeof(esp_google_sheet_base64_table) - 1; i++)
+            base64DecBuf[esp_google_sheet_base64_table[i]] = (unsigned char)i;
         base64DecBuf['='] = 0;
         return base64DecBuf;
     }
 
     template <typename T = uint8_t>
-    inline bool writeOutput(MB_FS *mbfs, gs_base64_io_t<T> &out)
+    inline bool writeOutput(MB_FS *mbfs, esp_google_sheet_base64_io_t<T> &out)
     {
         size_t write = out.bufWrite;
         out.bufWrite = 0;
@@ -772,7 +794,7 @@ namespace Base64Helper
     }
 
     template <typename T = uint8_t>
-    inline bool setOutput(MB_FS *mbfs, uint8_t val, gs_base64_io_t<T> &out, T **pos)
+    inline bool setOutput(MB_FS *mbfs, uint8_t val, esp_google_sheet_base64_io_t<T> &out, T **pos)
     {
         if (out.outT)
         {
@@ -792,7 +814,7 @@ namespace Base64Helper
     }
 
     template <typename T>
-    inline bool decode(MB_FS *mbfs, unsigned char *base64DecBuf, const char *src, size_t len, gs_base64_io_t<T> &out)
+    inline bool decode(MB_FS *mbfs, unsigned char *base64DecBuf, const char *src, size_t len, esp_google_sheet_base64_io_t<T> &out)
     {
         // the maximum chunk size that writes to output is limited by out.bufLen, the minimum is depending on the source length
         bool ret = false;
@@ -873,7 +895,7 @@ namespace Base64Helper
 
     template <typename T>
     inline bool encodeLast(MB_FS *mbfs, unsigned char *base64EncBuf, const unsigned char *in, size_t len,
-                           gs_base64_io_t<T> &out, T **pos)
+                           esp_google_sheet_base64_io_t<T> &out, T **pos)
     {
         if (len > 2)
             return false;
@@ -904,7 +926,7 @@ namespace Base64Helper
 
     template <typename T>
     inline bool encode(MB_FS *mbfs, unsigned char *base64EncBuf, uint8_t *src, size_t len,
-                       gs_base64_io_t<T> &out, bool writeAllRemaining = true)
+                       esp_google_sheet_base64_io_t<T> &out, bool writeAllRemaining = true)
     {
         const unsigned char *end, *in;
 
@@ -936,7 +958,7 @@ namespace Base64Helper
     template <typename T>
     inline bool decodeToArray(MB_FS *mbfs, const MB_String &src, MB_VECTOR<T> &val)
     {
-        gs_base64_io_t<T> out;
+        esp_google_sheet_base64_io_t<T> out;
         out.outL = &val;
         unsigned char *base64DecBuf = creatBase64DecBuffer(mbfs);
         bool ret = decode<T>(mbfs, base64DecBuf, src.c_str(), src.length(), out);
@@ -946,7 +968,7 @@ namespace Base64Helper
 
     inline bool decodeToFile(MB_FS *mbfs, const char *src, size_t len, mbfs_file_type type)
     {
-        gs_base64_io_t<uint8_t> out;
+        esp_google_sheet_base64_io_t<uint8_t> out;
         out.filetype = type;
         uint8_t *buf = MemoryHelper::createBuffer<uint8_t *>(mbfs, out.bufLen);
         out.outT = buf;
@@ -992,7 +1014,7 @@ namespace Base64Helper
     {
         MB_String str;
         char *encoded = MemoryHelper::createBuffer<char *>(mbfs, encodedLength(len) + 1);
-        gs_base64_io_t<char> out;
+        esp_google_sheet_base64_io_t<char> out;
         out.outT = encoded;
         unsigned char *base64EncBuf = creatBase64EncBuffer(mbfs, false);
         if (encode<char>(mbfs, base64EncBuf, (uint8_t *)src, len, out))
@@ -1004,7 +1026,7 @@ namespace Base64Helper
 
     inline bool encodeToClient(Client *client, MB_FS *mbfs, size_t bufSize, uint8_t *data, size_t len)
     {
-        gs_base64_io_t<uint8_t> out;
+        esp_google_sheet_base64_io_t<uint8_t> out;
         out.outC = client;
         uint8_t *buf = MemoryHelper::createBuffer<uint8_t *>(mbfs, out.bufLen);
         out.outT = buf;
@@ -1020,81 +1042,81 @@ namespace HttpHelper
 {
     inline void addNewLine(MB_String &header)
     {
-        header += gs_pgm_str_1; // "\r\n"
+        header += esp_google_sheet_pgm_str_1; // "\r\n"
     }
 
     inline void addGAPIsHost(MB_String &str, PGM_P sub)
     {
         str += sub;
         if (str[str.length() - 1] != '.')
-            str += gs_pgm_str_2; // "."
-        str += gs_pgm_str_3;     // "googleapis.com"
+            str += esp_google_sheet_pgm_str_2; // "."
+        str += esp_google_sheet_pgm_str_3;     // "googleapis.com"
     }
 
     inline void addGAPIsHostHeader(MB_String &header, PGM_P sub)
     {
-        header += gs_pgm_str_4; // "Host: "
+        header += esp_google_sheet_pgm_str_4; // "Host: "
         addGAPIsHost(header, sub);
         addNewLine(header);
     }
 
     inline void addHostHeader(MB_String &header, PGM_P host)
     {
-        header += gs_pgm_str_4; // "Host: "
+        header += esp_google_sheet_pgm_str_4; // "Host: "
         header += host;
         addNewLine(header);
     }
 
     inline void addContentTypeHeader(MB_String &header, PGM_P v)
     {
-        header += gs_pgm_str_5; // "Content-Type: "
+        header += esp_google_sheet_pgm_str_5; // "Content-Type: "
         header += v;
-        header += gs_pgm_str_1; // "\r\n"
+        header += esp_google_sheet_pgm_str_1; // "\r\n"
     }
 
     inline void addContentLengthHeader(MB_String &header, size_t len)
     {
-        header += gs_pgm_str_6; // "Content-Length: "
+        header += esp_google_sheet_pgm_str_6; // "Content-Length: "
         header += len;
         addNewLine(header);
     }
 
     inline void addUAHeader(MB_String &header)
     {
-        header += gs_pgm_str_7; // "User-Agent: ESP\r\n"
+        header += esp_google_sheet_pgm_str_7; // "User-Agent: ESP\r\n"
     }
 
     inline void addConnectionHeader(MB_String &header, bool keepAlive)
     {
-        header += keepAlive ? gs_pgm_str_8 /* "Connection: keep-alive\r\n" */
-                            : gs_pgm_str_9 /* "Connection: close\r\n" */;
+        header += keepAlive ? esp_google_sheet_pgm_str_8 /* "Connection: keep-alive\r\n" */
+                            : esp_google_sheet_pgm_str_9 /* "Connection: close\r\n" */;
     }
 
     /* Append the string with first request line (HTTP method) */
-    inline bool addRequestHeaderFirst(MB_String &header, gs_request_method method)
+    inline bool addRequestHeaderFirst(MB_String &header, esp_google_sheet_request_method method)
     {
         bool post = false;
         switch (method)
         {
         case http_get:
-            header += gs_pgm_str_10; // "GET"
+            header += esp_google_sheet_pgm_str_10; // "GET"
             break;
         case http_post:
-            header += gs_pgm_str_11; // "POST"
+            header += esp_google_sheet_pgm_str_11; // "POST"
             post = true;
             break;
 
         case http_patch:
-            header += gs_pgm_str_12; // "PATCH"
+            header += esp_google_sheet_pgm_str_12; // "PATCH"
             post = true;
             break;
 
         case http_delete:
-            header += gs_pgm_str_13; // "DELETE"
+            header += esp_google_sheet_pgm_str_13; // "DELETE"
             break;
 
         case http_put:
-            header += gs_pgm_str_14; // "PUT"
+            header += esp_google_sheet_pgm_str_14; // "PUT"
             break;
 
         default:
@@ -1102,7 +1124,7 @@ namespace HttpHelper
         }
 
         if (method == http_get || method == http_post || method == http_patch || method == http_delete || method == http_put)
-            header += gs_pgm_str_15; // " "
+            header += esp_google_sheet_pgm_str_15; // " "
 
         return post;
     }
@@ -1110,17 +1132,17 @@ namespace HttpHelper
     /* Append the string with last request line (HTTP version) */
     inline void addRequestHeaderLast(MB_String &header)
     {
-        header += gs_pgm_str_16; // " HTTP/1.1\r\n"
+        header += esp_google_sheet_pgm_str_16; // " HTTP/1.1\r\n"
     }
 
     /* Append the string with first part of Authorization header */
     inline void addAuthHeaderFirst(MB_String &header)
     {
-        header += gs_pgm_str_17; // "Authorization: "
-        header += gs_pgm_str_18; // "Bearer "
+        header += esp_google_sheet_pgm_str_17; // "Authorization: "
+        header += esp_google_sheet_pgm_str_18; // "Bearer "
     }
 
-    inline void parseRespHeader(const MB_String &src, struct gs_server_response_data_t &response)
+    inline void parseRespHeader(const MB_String &src, struct esp_google_sheet_server_response_data_t &response)
     {
         int beginPos = 0;
 
@@ -1130,35 +1152,35 @@ namespace HttpHelper
         {
 
             StringHelper::tokenSubString(src, response.connection,
-                                         gs_pgm_str_20 /* "Connection: " */,
-                                         gs_pgm_str_1 /* "\r\n" */, beginPos, 0, false);
+                                         esp_google_sheet_pgm_str_20 /* "Connection: " */,
+                                         esp_google_sheet_pgm_str_1 /* "\r\n" */, beginPos, 0, false);
             StringHelper::tokenSubString(src, response.contentType,
-                                         gs_pgm_str_21 /* "Content-Type: " */,
-                                         gs_pgm_str_1 /* "\r\n" */, beginPos, 0, false);
+                                         esp_google_sheet_pgm_str_21 /* "Content-Type: " */,
+                                         esp_google_sheet_pgm_str_1 /* "\r\n" */, beginPos, 0, false);
             StringHelper::tokenSubStringInt(src, response.contentLen,
-                                            gs_pgm_str_22 /* "Content-Length: " */,
-                                            gs_pgm_str_1 /* "\r\n" */, beginPos, 0, false);
+                                            esp_google_sheet_pgm_str_22 /* "Content-Length: " */,
+                                            esp_google_sheet_pgm_str_1 /* "\r\n" */, beginPos, 0, false);
             StringHelper::tokenSubString(src, response.etag,
-                                         gs_pgm_str_23 /* "ETag: " */,
-                                         gs_pgm_str_1 /* "\r\n" */, beginPos, 0, false);
+                                         esp_google_sheet_pgm_str_23 /* "ETag: " */,
+                                         esp_google_sheet_pgm_str_1 /* "\r\n" */, beginPos, 0, false);
             response.payloadLen = response.contentLen;
 
             if (StringHelper::tokenSubString(src, response.transferEnc,
-                                             gs_pgm_str_24 /* "Transfer-Encoding: " */,
-                                             gs_pgm_str_1 /* "\r\n" */, beginPos, 0, false) &&
-                StringHelper::compare(response.transferEnc, 0, gs_pgm_str_25 /* "chunked" */))
+                                             esp_google_sheet_pgm_str_24 /* "Transfer-Encoding: " */,
+                                             esp_google_sheet_pgm_str_1 /* "\r\n" */, beginPos, 0, false) &&
+                StringHelper::compare(response.transferEnc, 0, esp_google_sheet_pgm_str_25 /* "chunked" */))
                 response.isChunkedEnc = true;
 
-            if (response.httpCode == GS_ERROR_HTTP_CODE_OK ||
-                response.httpCode == GS_ERROR_HTTP_CODE_TEMPORARY_REDIRECT ||
-                response.httpCode == GS_ERROR_HTTP_CODE_PERMANENT_REDIRECT ||
-                response.httpCode == GS_ERROR_HTTP_CODE_MOVED_PERMANENTLY ||
-                response.httpCode == GS_ERROR_HTTP_CODE_FOUND)
+            if (response.httpCode == ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_OK ||
+                response.httpCode == ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_TEMPORARY_REDIRECT ||
+                response.httpCode == ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_PERMANENT_REDIRECT ||
+                response.httpCode == ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_MOVED_PERMANENTLY ||
+                response.httpCode == ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_FOUND)
                 StringHelper::tokenSubString(src, response.location,
-                                             gs_pgm_str_26 /* "Location: " */,
-                                             gs_pgm_str_1 /* "\r\n" */, beginPos, 0, false);
+                                             esp_google_sheet_pgm_str_26 /* "Location: " */,
+                                             esp_google_sheet_pgm_str_1 /* "\r\n" */, beginPos, 0, false);
 
-            if (response.httpCode == GS_ERROR_HTTP_CODE_NO_CONTENT)
+            if (response.httpCode == ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_NO_CONTENT)
                 response.noContent = true;
         }
     }
@@ -1167,8 +1189,8 @@ namespace HttpHelper
     {
         int code = 0;
         StringHelper::tokenSubStringInt(header, code,
-                                        gs_pgm_str_27 /* "HTTP/1.1 " */,
-                                        gs_pgm_str_15 /* " " */, pos, 0, false);
+                                        esp_google_sheet_pgm_str_27 /* "HTTP/1.1 " */,
+                                        esp_google_sheet_pgm_str_15 /* " " */, pos, 0, false);
         return code;
     }
 
@@ -1195,7 +1217,7 @@ namespace HttpHelper
         }
     }
 
-    inline void intTCPHandler(GS_TCP_Client *client, struct gs_tcp_response_handler_t &tcpHandler,
+    inline void intTCPHandler(GS_TCP_Client *client, struct esp_google_sheet_tcp_response_handler_t &tcpHandler,
                               size_t defaultChunkSize, size_t respSize, MB_String *payload)
     {
         // set the client before calling available
@@ -1293,7 +1315,7 @@ namespace HttpHelper
 
     // Returns -1 when complete
     inline int readChunkedData(MB_FS *mbfs, Client *client, char *out1, MB_String *out2,
-                               struct gs_tcp_response_handler_t &tcpHandler)
+                               struct esp_google_sheet_tcp_response_handler_t &tcpHandler)
     {
         if (!client)
             return 0;
@@ -1407,8 +1429,8 @@ namespace HttpHelper
         return olen;
     }
 
-    inline bool readStatusLine(MB_FS *mbfs, Client *client, struct gs_tcp_response_handler_t &tcpHandler,
-                               struct gs_server_response_data_t &response)
+    inline bool readStatusLine(MB_FS *mbfs, Client *client, struct esp_google_sheet_tcp_response_handler_t &tcpHandler,
+                               struct esp_google_sheet_server_response_data_t &response)
     {
         tcpHandler.chunkIdx++;
 
@@ -1437,8 +1459,8 @@ namespace HttpHelper
         return true;
     }
 
-    inline bool readHeader(MB_FS *mbfs, Client *client, struct gs_tcp_response_handler_t &tcpHandler,
-                           struct gs_server_response_data_t &response)
+    inline bool readHeader(MB_FS *mbfs, Client *client, struct esp_google_sheet_tcp_response_handler_t &tcpHandler,
+                           struct esp_google_sheet_server_response_data_t &response)
     {
         // do not check of the config here to allow legacy fcm to work
 
@@ -1473,12 +1495,12 @@ namespace Utils
         return mbfs->calCRC(buf);
     }
 
-    inline bool isNoContent(gs_server_response_data_t *response)
+    inline bool isNoContent(esp_google_sheet_server_response_data_t *response)
     {
         return !response->isChunkedEnc && response->contentLen == 0;
     }
 
-    inline bool isResponseTimeout(gs_tcp_response_handler_t *tcpHandler, bool &complete)
+    inline bool isResponseTimeout(esp_google_sheet_tcp_response_handler_t *tcpHandler, bool &complete)
     {
         if (millis() - tcpHandler->dataTime > 5000)
         {
@@ -1489,7 +1511,7 @@ namespace Utils
         return complete;
     }
 
-    inline bool isResponseComplete(gs_tcp_response_handler_t *tcpHandler, gs_server_response_data_t *response, bool &complete, bool check = true)
+    inline bool isResponseComplete(esp_google_sheet_tcp_response_handler_t *tcpHandler, esp_google_sheet_server_response_data_t *response, bool &complete, bool check = true)
     {
         if (check && !response->isChunkedEnc &&
             (tcpHandler->bufferAvailable < 0 || tcpHandler->payloadRead >= response->contentLen))
@@ -1501,7 +1523,7 @@ namespace Utils
         return complete;
     }
 
-    inline bool isChunkComplete(gs_tcp_response_handler_t *tcpHandler, gs_server_response_data_t *response, bool &complete)
+    inline bool isChunkComplete(esp_google_sheet_tcp_response_handler_t *tcpHandler, esp_google_sheet_server_response_data_t *response, bool &complete)
     {
         if (response->isChunkedEnc && tcpHandler->bufferAvailable < 0)
         {

@@ -1,7 +1,7 @@
-# Arduino Google Sheet Client Library for ESP32, ESP8266 and Raspberry Pi Pico (RP2040)
+# Arduino Google Sheet Client Library for Arduino devices
 
 
-Arduino Google Sheet Client Library for ESP32, ESP8266 and Raspberry Pi Pico (RP2040).
+Arduino Google Sheet Client Library for Arduino devices.
 
 
 This library works with Google Sheet APIs directly using the Service Account which is safe and reliable as it does not require Google AppScrips and other dirty HTTP hacks to work.
@@ -25,11 +25,11 @@ Note: There is the way of hacking to post the data to Google Forms’s linked sp
 ## Dependencies
 
 
-This library required **ESP8266, ESP32 and Raspberry Pi Pico Arduino Core SDK** to be installed.
+This library required the Arduino platforms SDK (for ESP32, ESP8266, Pico, SAMD stm32 and Teensy) to be installed.
 
-To install device SDK, in Arduino IDE, ESP8266, ESP32 and Pico Core SDK can be installed through **Boards Manager**. 
+To install device SDK, in Arduino IDE, the platform SDK can be installed through **Boards Manager**. 
 
-In PlatfoemIO IDE, ESP32 and ESP8266 devices's Core SDK can be installed through **PIO Home** > **Platforms** > **Espressif 8266 or Espressif 32**.
+In PlatfoemIO IDE, the platform SDK can be installed through **PIO Home** > **Platforms** > **Espressif 8266 or Espressif 32**.
 
 
 ### RP2040 Arduino SDK installation
@@ -208,6 +208,12 @@ See [all examples](/examples) for complete usages.
 #include <WiFi.h>
 #elif defined(ESP8266)
 #include <ESP8266WiFi.h>
+#elif __has_include(<WiFiNINA.h>)
+#include <WiFiNINA.h>
+#elif __has_include(<WiFi101.h>)
+#include <WiFi101.h>
+#elif __has_include(<WiFiS3.h>)
+#include <WiFiS3.h>
 #endif
 
 #include <ESP_Google_Sheet_Client.h>
@@ -524,15 +530,26 @@ void setExternalClient(Client *client, GS_NetworkConnectionRequestCallback netwo
                            GS_NetworkStatusRequestCallback networkStatusCB);
 ```
 
-####  Assign UDP client and gmt offset for NTP time synching when using external SSL client
 
-param **`client`** The pointer to UDP client based on the network type.
+#### Assign TinyGsm Clients.
 
-param **`gmtOffset`** The GMT time offset.
+param **`client`** The pointer to TinyGsmClient.
+
+param **`modem`** The pointer to TinyGsm modem object. Modem should be initialized and/or set mode before transfering data.
+
+param **`pin`** The SIM pin.
+
+param **`apn`** The GPRS APN (Access Point Name).
+
+param **`user`** The GPRS user.
+
+param **`password`** The GPRS password.
 
 ```cpp
-void setUDPClient(UDP *client, float gmtOffset = 0);
+void setGSMClient(Client *client, void *modem, const char *pin, const char *apn, const char *user, const char *password);
 ```
+
+
 
 ####  Set the network status acknowledgement.
 
@@ -640,6 +657,29 @@ retuen **`unsigned long`** of timestamp.
 unsigned long getExpiredTimestamp();
 ```
 
+
+
+#### Get the current timestamp.
+
+return **`timestamp`**
+
+```cpp
+uint64_t getCurrentTimestamp();
+```
+
+
+
+#### Set system time with timestamp.
+
+param  **`ts`** timestamp in seconds from midnight Jan 1, 1970.
+
+retuen **`Boolean`** type status indicates the success of the operation.
+
+```cpp
+bool setSystemTime(time_t ts);
+```
+
+
 #### Force the token to expire immediately and refresh.
 
 ```cpp
@@ -742,6 +782,21 @@ return **`Boolean`** type status indicates the success of the operation.
 
 ```cpp
 bool sdMMCBegin(const char *mountpoint = "/sdcard", bool mode1bit = false, bool format_if_mount_failed = false);
+```
+
+#### Formatted printing on Serial.
+
+```cpp
+void printf(const char *format, ...);
+```
+
+
+#### Get free Heap memory.
+
+return **`Free memory amount in byte`**
+
+```cpp
+int getFreeHeap();
 ```
 
 #### Applies one or more updates to the spreadsheet. 

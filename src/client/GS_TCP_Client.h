@@ -24,57 +24,31 @@
 
 #ifndef GS_TCP_Client_H
 #define GS_TCP_Client_H
+
 #include <Arduino.h>
-#include "mbfs/MB_MCU.h"
-#include "GS_Error.h"
-#include "GS_Const.h"
-#include "mbfs/MB_FS.h"
-#include "GS_Helper.h"
+#include "../GS_Error.h"
+#include "../GS_Const.h"
+#include "../mbfs/MB_FS.h"
+#include "../GS_Helper.h"
+#include "../client/SSLClient/ESP_SSLClient.h"
+#include "../GS_Network.h"
 
 #if defined(ESP32)
-extern "C"
+#include "IPAddress.h"
+#include "lwip/sockets.h"
+#endif
+
+#pragma GCC diagnostic ignored "-Wdelete-non-virtual-dtor"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+
+typedef enum
 {
-#include <esp_err.h>
-#include <esp_wifi.h>
-}
+  esp_google_sheet_client_type_undefined,
+  esp_google_sheet_client_type_internal_basic_client,
+  esp_google_sheet_client_type_external_basic_client,
+  esp_google_sheet_client_type_external_gsm_client
 
-#include <WiFi.h>
-#include <WiFiClient.h>
-#if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-#include <ETH.h>
-#endif
-#include <WiFiClientSecure.h>
-#if __has_include(<esp_idf_version.h>)
-#include <esp_idf_version.h>
-#endif
-
-#elif defined(ESP8266)
-
-#include <core_version.h>
-#include <time.h>
-#include <ESP8266WiFi.h>
-#include <WiFiClient.h>
-
-#ifndef ARDUINO_ESP8266_GIT_VER
-#error Your ESP8266 Arduino Core SDK is outdated, please update. From Arduino IDE go to Boards Manager and search 'esp8266' then select the latest version.
-#endif
-
-// 2.6.1 BearSSL bug
-#if ARDUINO_ESP8266_GIT_VER == 0x482516e3
-#error Due to bugs in BearSSL in ESP8266 Arduino Core SDK version 2.6.1, please update ESP8266 Arduino Core SDK to newer version. The issue was found here https:\/\/github.com/esp8266/Arduino/issues/6811.
-#endif
-
-#include <WiFiClientSecure.h>
-#include <CertStoreBearSSL.h>
-#define ESP_SIGNER_ESP_SSL_CLIENT BearSSL::WiFiClientSecure
-
-#elif defined(MB_ARDUINO_PICO)
-
-#include <WiFi.h>
-#include <WiFiClient.h>
-#include <WiFiClientSecure.h>
-
-#endif
+} esp_google_sheet_client_type;
 
 class GS_TCP_Client : public Client
 {
@@ -84,280 +58,157 @@ class GS_TCP_Client : public Client
 public:
   GS_TCP_Client()
   {
-#if defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-    client = nullptr;
-#else
-    client = std::unique_ptr<WiFiClientSecure>(new WiFiClientSecure());
-#endif
-  };
-  virtual ~GS_TCP_Client() { release(); }
+    _tcp_client = new ESP_SSLClient();
+  }
 
-  void setCACert(const char *caCert)
+  virtual ~GS_TCP_Client()
+  {
+    clear();
+    if (_tcp_client)
+      delete (ESP_SSLClient *)_tcp_client;
+    _tcp_client = nullptr;
+  }
+
+  /**
+   * Set the client.
+   * @param client The Client interface.
+   */
+  void setClient(Client *client, ESP_GOOGLE_SHEET_CLIENT_NetworkConnectionRequestCallback networkConnectionCB,
+                 ESP_GOOGLE_SHEET_CLIENT_NetworkStatusRequestCallback networkStatusCB)
   {
 
-#if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
+    clear();
+    _basic_client = client;
+    _client_type = esp_google_sheet_client_type_external_basic_client;
+    _network_connection_cb = networkConnectionCB;
+    _network_status_cb = networkStatusCB;
+  }
 
-#if defined(ESP8266) || defined(MB_ARDUINO_PICO)
-    client->setBufferSizes(bsslRxSize, bsslTxSize);
-#endif
-
-    if (caCert != NULL)
-    {
-      certType = gs_cert_type_data;
-#if defined(ESP32)
-      client->setCACert(caCert);
-#elif defined(ESP8266) || defined(MB_ARDUINO_PICO)
-      x509 = new X509List(caCert);
-      client->setTrustAnchors(x509);
-#endif
-    }
-    else
-    {
-      certType = gs_cert_type_none;
-      client->stop();
-#if defined(ESP32)
-      client->setCACert(NULL);
-#elif defined(ESP8266) || defined(MB_ARDUINO_PICO)
-      client->setNoDelay(true);
-#endif
-      setInsecure();
-    }
+  /** Assign TinyGsm Clients.
+   *
+   * @param client The pointer to TinyGsmClient.
+   * @param modem The pointer to TinyGsm modem object. Modem should be initialized and/or set mode before transfering data
+   * @param pin The SIM pin.
+   * @param apn The GPRS APN (Access Point Name).
+   * @param user The GPRS user.
+   * @param password The GPRS password.
+   */
+  void setGSMClient(Client *client, void *modem = nullptr, const char *pin = nullptr, const char *apn = nullptr, const char *user = nullptr, const char *password = nullptr)
+  {
+#if defined(ESP_GOOGLE_SHEET_CLIENT_GSM_MODEM_IS_AVAILABLE)
+    _pin = pin;
+    _apn = apn;
+    _user = user;
+    _password = password;
+    _modem = modem;
+    _client_type =  esp_google_sheet_client_type_external_gsm_client;
 #endif
   }
 
-  bool setCertFile(const char *caCertFile, mb_fs_mem_storage_type storageType)
+  /**
+   * Set Root CA certificate to verify.
+   * @param caCert The certificate.
+   */
+  void setCACert(const char *caCert)
   {
-#if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-
-#if defined(ESP8266) || defined(MB_ARDUINO_PICO)
-    client->setBufferSizes(bsslRxSize, bsslTxSize);
-#endif
-
-    if (clockReady && strlen(caCertFile) > 0)
+    if (caCert)
     {
-      MB_String filename = caCertFile;
+      if (_x509)
+        delete _x509;
+
+      _x509 = new X509List(caCert);
+      _tcp_client->setTrustAnchors(_x509);
+
+      setCertType( esp_google_sheet_cert_type_data);
+    }
+    else
+    {
+      setCertType( esp_google_sheet_cert_type_none);
+      setInSecure();
+    }
+  }
+
+  /**
+   * Set Root CA certificate to verify.
+   * @param certFile The certificate file path.
+   * @param storageType The storage type mb_fs_mem_storage_type_flash or mb_fs_mem_storage_type_sd.
+   * @return true when certificate loaded successfully.
+   */
+  bool setCertFile(const char *certFile, mb_fs_mem_storage_type storageType)
+  {
+    if (!_mbfs)
+      return false;
+
+    if (_clock_ready && strlen(certFile) > 0)
+    {
+      MB_String filename = certFile;
       if (filename.length() > 0)
       {
         if (filename[0] != '/')
           filename.prepend('/');
       }
 
-      int len = mbfs->open(filename, storageType, mb_fs_open_mode_read);
+      int len = _mbfs->open(filename, storageType, mb_fs_open_mode_read);
       if (len > -1)
       {
+        uint8_t *der = (uint8_t *)_mbfs->newP(len);
+        if (_mbfs->available(storageType))
+          _mbfs->read(storageType, der, len);
+        _mbfs->close(storageType);
 
-#if defined(ESP32)
+        if (_x509)
+          delete _x509;
 
-        if (storageType == mb_fs_mem_storage_type_flash)
-        {
-#if defined(MBFS_FLASH_FS)
-          fs::File file = mbfs->getFlashFile();
-          client->loadCACert(file, len);
-          certType = gs_cert_type_file;
-#endif
-          mbfs->close(storageType);
-        }
-        else if (storageType == mb_fs_mem_storage_type_sd)
-        {
+        _x509 = new X509List(der, len);
+        _tcp_client->setTrustAnchors(_x509);
+        _mbfs->delP(&der);
 
-#if defined(MBFS_ESP32_SDFAT_ENABLED)
-
-          if (cert)
-            MemoryHelper::freeBuffer(mbfs, cert);
-
-          cert = MemoryHelper::createBuffer<char *>(mbfs, len);
-          if (mbfs->available(storageType))
-            mbfs->read(storageType, (uint8_t *)cert, len);
-
-          client->setCACert((const char *)cert);
-          certType = gs_cert_type_file;
-
-#elif defined(MBFS_SD_FS)
-          fs::File file = mbfs->getSDFile();
-          client->loadCACert(file, len);
-          certType = gs_cert_type_file;
-#endif
-          mbfs->close(storageType);
-        }
-
-#elif defined(ESP8266) || defined(MB_ARDUINO_PICO)
-        uint8_t *der = MemoryHelper::createBuffer<uint8_t *>(mbfs, len);
-        if (mbfs->available(storageType))
-          mbfs->read(storageType, der, len);
-        mbfs->close(storageType);
-        client->setTrustAnchors(new X509List(der, len));
-        MemoryHelper::freeBuffer(mbfs, der);
-        certType = gs_cert_type_file;
-#endif
+        setCertType( esp_google_sheet_cert_type_file);
       }
     }
 
-#endif
-
-    return certType == gs_cert_type_file;
+    return getCertType() ==  esp_google_sheet_cert_type_file;
   }
 
-  void setInsecure()
+  /**
+   * Set TCP connection time out in seconds.
+   * @param timeoutSec The time out in seconds.
+   */
+  void setTimeout(uint32_t timeoutSec)
   {
-#if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-#if defined(ESP32)
-#if __has_include(<esp_idf_version.h>)
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(3, 3, 0)
-    client->setInsecure();
-#endif
-#endif
-#elif defined(ESP8266) || defined(MB_ARDUINO_PICO)
-    client->setInsecure();
-#endif
-
-#endif
-  };
-
-  void setBufferSizes(int rx, int tx)
-  {
-#if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-#if defined(ESP_8266) || defined(MB_ARDUINO_PICO)
-    bsslRxSize = rx;
-    bsslTxSize = tx;
-    if (client)
-      client->setBufferSizes(rx, tx);
-#endif
-#endif
+    _tcp_client->setTimeout(timeoutSec);
   }
 
-  void ethDNSWorkAround(SPI_ETH_Module *eth, const char *host, uint16_t port)
+  /**  Set the BearSSL IO buffer size.
+   *
+   * @param rx The BearSSL receive buffer size in bytes.
+   * @param tx The BearSSL trasmit buffer size in bytes.
+   */
+  void setIOBufferSize(int rx, int tx)
   {
-#if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-
-    if (!eth)
-      return;
-
-#if defined(ESP8266) && defined(ESP8266_CORE_SDK_V3_X_X)
-
-#if defined(INC_ENC28J60_LWIP)
-    if (eth->enc28j60)
-      goto ex;
-#endif
-#if defined(INC_W5100_LWIP)
-    if (eth->w5100)
-      goto ex;
-#endif
-#if defined(INC_W5500_LWIP)
-    if (eth->w5500)
-      goto ex;
-#endif
-
-#elif defined(MB_ARDUINO_PICO)
-
-#endif
-
-    return;
-
-#if defined(INC_ENC28J60_LWIP) || defined(INC_W5100_LWIP) || defined(INC_W5500_LWIP)
-  ex:
-    WiFiClient _client;
-    _client.connect(host, port);
-    _client.stop();
-#endif
-
-#endif
+    _rx_size = rx;
+    _tx_size = tx;
   }
 
-  bool networkReady()
-  {
-#if defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-
-    if (gs_network_status_cb)
-      gs_network_status_cb();
-
-    return gs_networkStatus;
-#else
-    return WiFi.status() == WL_CONNECTED || ethLinkUp();
-#endif
-  }
-
-  void networkReconnect()
-  {
-#if defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-    if (gs_network_connection_cb)
-      gs_network_connection_cb();
-#else
-#if defined(ESP32)
-    esp_wifi_connect();
-#elif defined(ESP8266)
-    WiFi.reconnect();
-#endif
-#endif
-  }
-
-  void networkDisconnect()
-  {
-#if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-    WiFi.disconnect();
-#endif
-  }
-
-  int setTimeout(uint32_t timeoutmSec)
-  {
-    this->timeoutmSec = timeoutmSec;
-#if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-#if defined(ESP32)
-    return client->setTimeout(timeoutmSec / 1000);
-#elif defined(ESP8266) || defined(MB_ARDUINO_PICO)
-    client->setTimeout(timeoutmSec);
-#endif
-#endif
-    return 1;
-  }
-
-  bool begin(const char *host, uint16_t port, int *response_code)
-  {
-    this->host = host;
-    this->port = port;
-    this->response_code = response_code;
-    return true;
-  }
-
-  operator bool()
-  {
-    return connected();
-  }
-
-  uint8_t connected()
-  {
-    if (!client)
-      return 0;
-    return client->connected();
-  }
-
-  bool connect()
-  {
-    if (connected())
-    {
-      flush();
-      return true;
-    }
-    int ret = host.length() ? client->connect(host.c_str(), port) : client->connect(ip, port);
-    if (!ret)
-      return setError(GS_ERROR_TCP_ERROR_CONNECTION_REFUSED);
-
-    client->setTimeout(timeoutmSec);
-
-    return connected();
-  }
-
+  /**
+   * Get the ethernet link status.
+   * @return true for link up or false for link down.
+   */
   bool ethLinkUp()
   {
-#if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
+    bool ret = false;
+
+#if defined(ESP_GOOGLE_SHEET_CLIENT_ETH_IS_AVAILABLE)
+
 #if defined(ESP32)
     if (strcmp(ETH.localIP().toString().c_str(), (const char *)MBSTRING_FLASH_MCR("0.0.0.0")) != 0)
     {
       ETH.linkUp();
-      return true;
+      ret = true;
     }
 #elif defined(ESP8266) || defined(MB_ARDUINO_PICO)
-    if (!eth && config)
-      eth = &(config->spi_ethernet_module);
+    if (!eth && _config)
+      eth = &(_config->spi_ethernet_module);
 
     if (!eth)
       return false;
@@ -405,25 +256,327 @@ public:
 
 #endif
 
-    return false;
+    return ret;
   }
 
-  void release()
+  /**
+   * Checking for valid IP.
+   * @return true for valid.
+   */
+  bool validIP(IPAddress ip)
   {
-#if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-    if (client)
-    {
-      client->stop();
-      client.reset(nullptr);
-      client.release();
-      host.clear();
+    char buf[16];
+    sprintf(buf, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+    return strcmp(buf, "0.0.0.0") != 0;
+  }
 
-      if (cert)
-        MemoryHelper::freeBuffer(mbfs, cert);
+  void ethDNSWorkAround(SPI_ETH_Module *eth, const char *host, uint16_t port)
+  {
 
-      certType = gs_cert_type_undefined;
-    }
+    if (!eth)
+      return;
+
+#if defined(ESP8266) && defined(ESP8266_CORE_SDK_V3_X_X)
+
+#if defined(INC_ENC28J60_LWIP)
+    if (eth->enc28j60)
+      goto ex;
 #endif
+#if defined(INC_W5100_LWIP)
+    if (eth->w5100)
+      goto ex;
+#endif
+#if defined(INC_W5500_LWIP)
+    if (eth->w5500)
+      goto ex;
+#endif
+
+#elif defined(MB_ARDUINO_PICO)
+
+#endif
+
+    return;
+
+#if defined(INC_ENC28J60_LWIP) || defined(INC_W5100_LWIP) || defined(INC_W5500_LWIP)
+  ex:
+#if defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE)
+    WiFiClient _client;
+    _client.connect(host, port);
+    _client.stop();
+#endif
+#endif
+  }
+
+  /**
+   * Get the network status.
+   * @return true for connected or false for not connected.
+   */
+  bool networkReady()
+  {
+
+    // We will not invoke the network status request when device has built-in WiFi or Ethernet and it is connected.
+
+    if (_client_type ==  esp_google_sheet_client_type_external_gsm_client)
+    {
+      _network_status = gprsConnected();
+      if (!_network_status)
+        gprsConnect();
+    }
+    else if (WiFI_CONNECTED || ethLinkUp())
+      _network_status = true;
+    else if (_client_type ==  esp_google_sheet_client_type_external_basic_client)
+    {
+      if (!_network_status_cb)
+        _last_error = 1;
+      else
+        _network_status_cb();
+    }
+
+    return _network_status;
+  }
+
+  /**
+   * Reconnect the network.
+   */
+  void networkReconnect()
+  {
+
+    if (_client_type ==  esp_google_sheet_client_type_external_basic_client)
+    {
+#if defined(ESP_GOOGLE_SHEET_CLIENT_HAS_WIFI_DISCONNECT)
+      // We can reconnect WiFi when device connected via built-in WiFi that supports reconnect
+      if (WiFI_CONNECTED)
+      {
+        WiFi.reconnect();
+        return;
+      }
+
+#endif
+
+      if (_network_connection_cb)
+        _network_connection_cb();
+    }
+    else if (_client_type ==  esp_google_sheet_client_type_external_gsm_client)
+    {
+      gprsDisconnect();
+      gprsConnect();
+    }
+    else if (_client_type ==  esp_google_sheet_client_type_internal_basic_client)
+    {
+
+#if defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE)
+#if defined(ESP32) || defined(ESP8266)
+      WiFi.reconnect();
+#else
+      if (_wifi_multi && _wifi_multi->credentials.size())
+        _wifi_multi->reconnect();
+#endif
+#endif
+    }
+  }
+
+  /**
+   * Disconnect the network.
+   */
+  void networkDisconnect() {}
+
+  /**
+   * Get the Client type.
+   * @return The  esp_google_sheet_client_type enum value.
+   */
+   esp_google_sheet_client_type type() { return _client_type; }
+
+  /**
+   * Get the Client initialization status.
+   * @return The initialization status.
+   */
+  bool isInitialized()
+  {
+    bool rdy = true;
+#if !defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE)
+
+    if (_client_type ==  esp_google_sheet_client_type_external_basic_client &&
+        (!_network_connection_cb || !_network_status_cb))
+      rdy = false;
+    else if (_client_type !=  esp_google_sheet_client_type_external_basic_client ||
+             _client_type !=  esp_google_sheet_client_type_external_gsm_client)
+      rdy = false;
+#else
+    // assume external client is WiFiClient and network status request callback is not required
+    // when device was connected to network using on board WiFi
+    if (_client_type ==  esp_google_sheet_client_type_external_basic_client &&
+        (!_network_connection_cb || (!_network_status_cb && !WiFI_CONNECTED && !ethLinkUp())))
+    {
+      rdy = false;
+    }
+
+#endif
+
+    if (!rdy)
+    {
+      if (!_network_connection_cb)
+        setError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_CLIENT_MISSING_NETWORK_CONNECTION_CB);
+
+      if (!WiFI_CONNECTED && !ethLinkUp())
+      {
+        if (!_network_status_cb)
+          setError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_CLIENT_MISSING_NETWORK_STATUS_CB);
+      }
+    }
+
+    return rdy;
+  }
+
+  /**
+   * Set Root CA certificate to verify.
+   * @param name The host name.
+   * @param ip The ip address result.
+   * @return 1 for success or 0 for failed.
+   */
+  int hostByName(const char *name, IPAddress &ip)
+  {
+#if defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE)
+    return WiFi.hostByName(name, ip);
+#else
+    return 1;
+#endif
+  }
+
+  /**
+   * Store the host name and port.
+   * @param host The host name to connect.
+   * @param port The port to connect.
+   * @return true.
+   */
+  bool begin(const char *host, uint16_t port, int *response_code)
+  {
+    _host = host;
+    _port = port;
+    _tcp_client->setBufferSizes(_rx_size, _tx_size);
+    _last_error = 0;
+    this->response_code = response_code;
+    return true;
+  }
+
+  void setInsecure()
+  {
+    _tcp_client->setInsecure();
+  };
+
+  void setBufferSizes(int rx, int tx)
+  {
+    _rx_size = rx;
+    _tx_size = tx;
+  }
+
+  operator bool()
+  {
+    return connected();
+  }
+
+  /**
+   * Get the TCP connection status.
+   * @return true for connected or false for not connected.
+   */
+  uint8_t connected() { return _tcp_client && _tcp_client->connected(); };
+
+  bool connect()
+  {
+    if (!_tcp_client)
+      return false;
+
+    _tcp_client->enableSSL(true);
+
+    _last_error = 0;
+
+    if (connected())
+    {
+      flush();
+      return true;
+    }
+
+    if (!_basic_client)
+    {
+      if (_client_type ==  esp_google_sheet_client_type_external_basic_client)
+      {
+        _last_error = 1;
+        return false;
+      }
+      else if (_client_type !=  esp_google_sheet_client_type_external_gsm_client)
+      {
+// Device has no built-in WiFi, external client required.
+#if defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE)
+        _basic_client = new WiFiClient();
+        _client_type =  esp_google_sheet_client_type_internal_basic_client;
+#else
+        _last_error = 1;
+        return false;
+#endif
+      }
+    }
+
+    _tcp_client->setClient(_basic_client);
+    _tcp_client->setDebugLevel(2);
+    if (!_tcp_client->connect(_host.c_str(), _port))
+      return setError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_ERROR_CONNECTION_REFUSED);
+
+#if defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE) && (defined(ESP32) || defined(ESP8266) || defined(MB_ARDUINO_PICO))
+    if (_client_type ==  esp_google_sheet_client_type_internal_basic_client)
+      reinterpret_cast<WiFiClient *>(_basic_client)->setNoDelay(true);
+#endif
+
+    // For TCP keepalive should work in ESP8266 core > 3.1.2.
+    // https://github.com/esp8266/Arduino/pull/8940
+
+    // Not currently supported by WiFiClientSecure in Arduino Pico core
+
+    if (_client_type ==  esp_google_sheet_client_type_internal_basic_client)
+    {
+      if (isKeepAliveSet())
+      {
+#if defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE)
+
+#if defined(ESP8266)
+        if (_tcpKeepIdleSeconds == 0 || _tcpKeepIntervalSeconds == 0 || _tcpKeepCount == 0)
+          reinterpret_cast<WiFiClient *>(_basic_client)->disableKeepAlive();
+        else
+          reinterpret_cast<WiFiClient *>(_basic_client)->keepAlive(_tcpKeepIdleSeconds, _tcpKeepIntervalSeconds, _tcpKeepCount);
+
+#elif defined(ESP32)
+
+        if (_tcpKeepIdleSeconds == 0 || _tcpKeepIntervalSeconds == 0 || _tcpKeepCount == 0)
+        {
+          _tcpKeepIdleSeconds = 0;
+          _tcpKeepIntervalSeconds = 0;
+          _tcpKeepCount = 0;
+        }
+
+        bool success = setOption(TCP_KEEPIDLE, &_tcpKeepIdleSeconds) > -1 &&
+                       setOption(TCP_KEEPINTVL, &_tcpKeepIntervalSeconds) > -1 &&
+                       setOption(TCP_KEEPCNT, &_tcpKeepCount) > -1;
+        if (!success)
+          _isKeepAlive = false;
+#endif
+
+#endif
+      }
+    }
+
+    bool ret = connected();
+
+    if (!ret)
+      stop();
+
+    return ret;
+  }
+
+  /**
+   * Stop TCP connection.
+   */
+  void stop()
+  {
+    if (_tcp_client)
+      _tcp_client->stop();
   }
 
   int setError(int code)
@@ -435,34 +588,35 @@ public:
     return *response_code;
   }
 
-  void stop()
-  {
-    if (!client)
-      return;
-
-    return client->stop();
-  };
-
   size_t write(const uint8_t *data, size_t size)
   {
-    if (!data || !client)
-      return setError(GS_ERROR_TCP_ERROR_SEND_REQUEST_FAILED);
 
-    if (size == 0)
-      return setError(GS_ERROR_TCP_ERROR_SEND_REQUEST_FAILED);
+    if (!_tcp_client)
+      return setError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_CLIENT_NOT_INITIALIZED);
+
+    if (!data || size == 0)
+      return setError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_ERROR_SEND_REQUEST_FAILED);
 
     if (!networkReady())
-      return setError(GS_ERROR_TCP_ERROR_NOT_CONNECTED);
+      return setError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_ERROR_NOT_CONNECTED);
 
-    if (!client->connected() && !connect())
-      return setError(GS_ERROR_TCP_ERROR_CONNECTION_REFUSED);
+    if (!_tcp_client->connected() && !connect())
+      return setError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_ERROR_CONNECTION_REFUSED);
 
-    int res = client->write(data, size);
+    int toSend = _chunkSize;
+    int sent = 0;
+    while (sent < (int)size)
+    {
+      if (sent + toSend > (int)size)
+        toSend = size - sent;
 
-    if (res != (int)size)
-      return setError(GS_ERROR_TCP_ERROR_SEND_REQUEST_FAILED);
+      if ((int)_tcp_client->write(data + sent, toSend) != toSend)
+        return ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_ERROR_SEND_REQUEST_FAILED;
 
-    setError(GS_ERROR_HTTP_CODE_OK);
+      sent += toSend;
+    }
+
+    setError(ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_OK);
 
     return size;
   }
@@ -474,201 +628,369 @@ public:
     return write(buf, 1);
   }
 
-  int send(const char *data, int len = 0)
-  {
-    if (len == 0)
-      len = strlen(data);
-    return write((uint8_t *)data, len);
-  }
+  /**
+   * The TCP data send function.
+   * @param data The data to send.
+   * @return The size of data that was successfully sent or 0 for error.
+   */
+  int send(const char *data) { return write((uint8_t *)data, strlen(data)); }
 
-  int print(const char *data)
-  {
-    return send(data);
-  }
+  /**
+   * The TCP data print function.
+   * @param data The data to print.
+   * @return The size of data that was successfully print or 0 for error.
+   */
+  int print(const char *data) { return send(data); }
 
+  /**
+   * The TCP data print function.
+   * @param data The data to print.
+   * @return The size of data that was successfully print or 0 for error.
+   */
   int print(int data)
   {
-    char *buf = MemoryHelper::createBuffer<char *>(mbfs, 64);
-    sprintf(buf, (const char *)MBSTRING_FLASH_MCR("%d"), data);
+    char buf[64];
+    memset(buf, 0, 64);
+    sprintf(buf, (const char *)FPSTR("%d"), data);
     int ret = send(buf);
-    MemoryHelper::freeBuffer(mbfs, buf);
     return ret;
   }
 
+  /**
+   * The TCP data print with new line function.
+   * @param data The data to print.
+   * @return The size of data that was successfully print or 0 for error.
+   */
   int println(const char *data)
   {
     int len = send(data);
     if (len < 0)
       return len;
-    int sz = send((const char *)MBSTRING_FLASH_MCR("\r\n"));
+    int sz = send((const char *)FPSTR("\r\n"));
     if (sz < 0)
       return sz;
     return len + sz;
   }
 
+  /**
+   * The TCP data print with new line function.
+   * @param data The data to print.
+   * @return The size of data that was successfully print or 0 for error.
+   */
   int println(int data)
   {
-    char *buf = MemoryHelper::createBuffer<char *>(mbfs, 64);
-    sprintf(buf, (const char *)MBSTRING_FLASH_MCR("%d\r\n"), data);
+    char buf[64];
+    memset(buf, 0, 64);
+    sprintf(buf, (const char *)FPSTR("%d\r\n"), data);
     int ret = send(buf);
-    MemoryHelper::freeBuffer(mbfs, buf);
     return ret;
   }
 
   int available()
   {
-    if (!client)
-      return setError(GS_ERROR_TCP_ERROR_CONNECTION_REFUSED);
+    if (!_tcp_client)
+      return setError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_CLIENT_NOT_INITIALIZED);
 
-    return client->available();
+    return _tcp_client->available();
   }
 
-  int read(uint8_t *buf, size_t size)
+  /**
+   * The TCP data read function.
+   * @return The read value or -1 for error.
+   */
+  int read()
   {
-    return readBytes(buf, size);
+    if (!_basic_client)
+      return setError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_CLIENT_NOT_INITIALIZED);
+
+    return _tcp_client->read();
+  }
+
+  int read(uint8_t *buf, size_t len)
+  {
+    return readBytes(buf, len);
+  }
+
+  /**
+   * The TCP data read function.
+   * @param buf The data buffer.
+   * @param len The length of data that read.
+   * @return The size of data that was successfully read or negative value for error.
+   */
+  int readBytes(uint8_t *buf, int len)
+  {
+    if (!_basic_client)
+      return setError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_CLIENT_NOT_INITIALIZED);
+
+    return _tcp_client->read(buf, len);
+  }
+
+  /**
+   * The TCP data read function.
+   * @param buf The data buffer.
+   * @param len The length of data that read.
+   * @return The size of data that was successfully read or negative value for error.
+   */
+  int readBytes(char *buf, int len)
+  {
+    return readBytes((uint8_t *)buf, len);
+  }
+
+  /**
+   * Wait for all receive buffer data read.
+   */
+  void flush()
+  {
+    if (_tcp_client)
+      _tcp_client->flush();
+  }
+
+  /**
+   * Set the network status which should call in side the networkStatusRequestCallback function.
+   * @param status The status of network.
+   */
+  void setNetworkStatus(bool status)
+  {
+    _network_status = status;
   }
 
   int peek()
   {
-    if (!client)
+    if (!_tcp_client)
       return 0;
-    return client->peek();
-  }
-
-  int read()
-  {
-
-    if (!client)
-      return setError(GS_ERROR_TCP_ERROR_CONNECTION_REFUSED);
-
-    int r = client->read();
-
-    if (r < 0)
-      return setError(GS_ERROR_TCP_RESPONSE_READ_FAILED);
-
-    return r;
-  }
-
-  int readBytes(uint8_t *buf, int len)
-  {
-    if (!client)
-      return setError(GS_ERROR_TCP_ERROR_CONNECTION_REFUSED);
-
-    int r = client->readBytes(buf, len);
-
-    if (r != len)
-      return setError(GS_ERROR_TCP_RESPONSE_READ_FAILED);
-
-    setError(GS_ERROR_HTTP_CODE_OK);
-
-    return r;
-  }
-
-  int readBytes(char *buf, int len) { return readBytes((uint8_t *)buf, len); }
-
-  void flush()
-  {
-    if (!client)
-      return;
-
-    while (client->available() > 0)
-      client->read();
+    return _tcp_client->peek();
   }
 
   int connect(IPAddress ip, uint16_t port)
   {
-    this->ip = ip;
-    this->port = port;
+    _ip = ip;
+    _port = port;
     return connect();
   }
+
   int connect(const char *host, uint16_t port)
   {
-    this->host = host;
-    this->port = port;
+    _host = host;
+    _port = port;
     return connect();
   }
 
-  gs_cert_type getCertType()
+  void setConfig(esp_google_sheet_auth_cfg_t *config, MB_FS *mbfs)
   {
-    return certType;
-  }
-
-  void setConfig(gauth_cfg_t *config, MB_FS *mbfs)
-  {
-    this->config = config;
-    this->mbfs = mbfs;
+    _config = config;
+    _mbfs = mbfs;
   }
 
   void setClockStatus(bool status)
   {
-    clockReady = status;
+    _clock_ready = status;
   }
 
-#if defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-  void setClient(Client *client, GS_NetworkConnectionRequestCallback networkConnectionCB,
-                 GS_NetworkStatusRequestCallback networkStatusCB)
+  void setCertType( esp_google_sheet_cert_type type) { _cert_type = type; }
+
+   esp_google_sheet_cert_type getCertType() { return _cert_type; }
+
+  unsigned long tcpTimeout()
   {
-
-    this->client = client;
-    this->gs_network_connection_cb = networkConnectionCB;
-    this->gs_network_status_cb = networkStatusCB;
+    if (_tcp_client)
+      return 1000 * _tcp_client->getTimeout();
+    return 0;
   }
+
+  void disconnect(){};
+
+  void keepAlive(int tcpKeepIdleSeconds, int tcpKeepIntervalSeconds, int tcpKeepCount)
+  {
+    _tcpKeepIdleSeconds = tcpKeepIdleSeconds;
+    _tcpKeepIntervalSeconds = tcpKeepIntervalSeconds;
+    _tcpKeepCount = tcpKeepCount;
+    _isKeepAlive = tcpKeepIdleSeconds > 0 && tcpKeepIntervalSeconds > 0 && tcpKeepCount > 0;
+  }
+
+  bool isKeepAliveSet() { return _tcpKeepIdleSeconds > -1 && _tcpKeepIntervalSeconds > -1 && _tcpKeepCount > -1; };
+
+  bool isKeepAlive() { return _isKeepAlive; };
+
+  void clear()
+  {
+    if (_basic_client && _client_type ==  esp_google_sheet_client_type_internal_basic_client)
+    {
+#if defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE)
+      delete (WiFiClient *)_basic_client;
+#else
+      delete _basic_client;
+#endif
+      _basic_client = nullptr;
+    }
+  }
+
+  void setWiFi( esp_google_sheet_wifi *wifi) { _wifi_multi = wifi; }
+
+  bool gprsConnect()
+  {
+#if defined(ESP_GOOGLE_SHEET_CLIENT_GSM_MODEM_IS_AVAILABLE)
+    TinyGsm *gsmModem = (TinyGsm *)_modem;
+    if (gsmModem)
+    {
+      // Unlock your SIM card with a PIN if needed
+      if (_pin.length() && gsmModem->getSimStatus() != 3)
+        gsmModem->simUnlock(_pin.c_str());
+
+#if defined(TINY_GSM_MODEM_XBEE)
+      // The XBee must run the gprsConnect function BEFORE waiting for network!
+      gsmModem->gprsConnect(_apn.c_str(), _user.c_str(), _password.c_str());
 #endif
 
-  gs_tcp_client_type type()
-  {
-#if defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-    return gs_tcp_client_type_external;
+      if (_last_error == 0)
+        Serial.print((const char *)MBSTRING_FLASH_MCR("Waiting for network..."));
+
+      if (!gsmModem->waitForNetwork())
+      {
+
+        if (_last_error == 0)
+          Serial.println((const char *)MBSTRING_FLASH_MCR(" fail"));
+
+        _last_error = 1;
+        _network_status = false;
+        return false;
+      }
+
+      if (_last_error == 0)
+        Serial.println((const char *)MBSTRING_FLASH_MCR(" success"));
+
+      if (gsmModem->isNetworkConnected())
+      {
+        if (_last_error == 0)
+        {
+          Serial.print((const char *)MBSTRING_FLASH_MCR("Connecting to "));
+          Serial.print(_apn.c_str());
+        }
+
+        _network_status = gsmModem->gprsConnect(_apn.c_str(), _user.c_str(), _password.c_str()) &&
+                          gsmModem->isGprsConnected();
+
+        if (_last_error == 0)
+        {
+          if (_network_status)
+            Serial.println((const char *)MBSTRING_FLASH_MCR(" success"));
+          else
+            Serial.println((const char *)MBSTRING_FLASH_MCR(" fail"));
+        }
+      }
+
+      if (!_network_status)
+        _last_error = 1;
+
+      return _network_status;
+    }
+
 #endif
-    return gs_tcp_client_type_internal;
+    return false;
   }
 
-  bool isInitialized()
+  bool gprsConnected()
   {
-#if defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-    return this->client != nullptr && gs_network_status_cb != NULL && gs_network_connection_cb != NULL;
+#if defined(ESP_GOOGLE_SHEET_CLIENT_GSM_MODEM_IS_AVAILABLE)
+    TinyGsm *gsmModem = (TinyGsm *)_modem;
+    _network_status = gsmModem && gsmModem->isGprsConnected();
 #endif
-    return true;
+    return _network_status;
   }
 
-  void setNetworkStatus(bool status)
+  bool gprsDisconnect()
   {
-    gs_networkStatus = status;
+#if defined(ESP_GOOGLE_SHEET_CLIENT_GSM_MODEM_IS_AVAILABLE)
+    TinyGsm *gsmModem = (TinyGsm *)_modem;
+    _network_status = gsmModem && gsmModem->gprsDisconnect();
+#endif
+    return !_network_status;
+  }
+
+  uint32_t gprsGetTime()
+  {
+#if defined(ESP_GOOGLE_SHEET_CLIENT_GSM_MODEM_IS_AVAILABLE) && defined(TINY_GSM_MODEM_HAS_TIME)
+
+    if (!gprsConnected())
+      return 0;
+
+    TinyGsm *gsmModem = (TinyGsm *)_modem;
+    int year3 = 0;
+    int month3 = 0;
+    int day3 = 0;
+    int hour3 = 0;
+    int min3 = 0;
+    int sec3 = 0;
+    float timezone = 0;
+    for (int8_t i = 5; i; i--)
+    {
+      if (gsmModem->getNetworkTime(&year3, &month3, &day3, &hour3, &min3, &sec3, &timezone))
+      {
+        return TimeHelper::getTimestamp(year3, month3, day3, hour3, min3, sec3);
+      }
+    }
+#endif
+    return 0;
+  }
+
+  int setOption(int option, int *value)
+  {
+#if defined(ESP32) && defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE)
+    // Actually we wish to use setSocketOption directly but it is ambiguous in old ESP32 core v1.0.x.;
+    // Use setOption instead for old core support.
+    return reinterpret_cast<WiFiClient *>(_basic_client)->setOption(option, value);
+#endif
+    return 0;
+  }
+
+  void setInSecure()
+  {
+    _tcp_client->setInsecure();
   }
 
 private:
-#if defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-  Client *client = nullptr;
-#else
-  std::unique_ptr<WiFiClientSecure> client = std::unique_ptr<WiFiClientSecure>(new WiFiClientSecure());
+  // lwIP TCP Keepalive idle in seconds.
+  int _tcpKeepIdleSeconds = -1;
+  // lwIP TCP Keepalive interval in seconds.
+  int _tcpKeepIntervalSeconds = -1;
+  // lwIP TCP Keepalive count.
+  int _tcpKeepCount = -1;
+  bool _isKeepAlive = false;
+
+  ESP_SSLClient *_tcp_client = nullptr;
+  X509List *_x509 = nullptr;
+
+  MB_String _host;
+  uint16_t _port = 443;
+  IPAddress _ip;
+
+  MB_FS *_mbfs = nullptr;
+  Client *_basic_client = nullptr;
+   esp_google_sheet_wifi *_wifi_multi = nullptr;
+
+  ESP_GOOGLE_SHEET_CLIENT_NetworkConnectionRequestCallback _network_connection_cb = NULL;
+  ESP_GOOGLE_SHEET_CLIENT_NetworkStatusRequestCallback _network_status_cb = NULL;
+
+#if defined(ESP_GOOGLE_SHEET_CLIENT_HAS_WIFIMULTI)
+  WiFiMulti *_multi = nullptr;
 #endif
-  GS_NetworkConnectionRequestCallback gs_network_connection_cb = NULL;
-  GS_NetworkStatusRequestCallback gs_network_status_cb = NULL;
-  volatile bool gs_networkStatus = false;
-  char *cert = NULL;
-  gs_cert_type certType = gs_cert_type_undefined;
-  MB_String host;
-  uint16_t port = 0;
-  IPAddress ip;
+#if defined(ESP_GOOGLE_SHEET_CLIENT_GSM_MODEM_IS_AVAILABLE)
+  MB_String _pin, _apn, _user, _password;
+  void *_modem = nullptr;
+#endif
+  int _chunkSize = 1024;
+  bool _clock_ready = false;
+  int _last_error = 0;
+  volatile bool _network_status = false;
+  int _rx_size = 1024, _tx_size = 512;
   int *response_code = nullptr;
-  uint32_t timeoutmSec = 10000;
-  gauth_cfg_t *config = nullptr;
-  MB_FS *mbfs = nullptr;
-#if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
+   esp_google_sheet_auth_cfg_t *_config = nullptr;
+
+   esp_google_sheet_cert_type _cert_type =  esp_google_sheet_cert_type_undefined;
+   esp_google_sheet_client_type _client_type =  esp_google_sheet_client_type_undefined;
+
 #if defined(ESP8266) || defined(MB_ARDUINO_PICO)
-#if defined(ESP8266)
-  uint16_t bsslRxSize = 512;
-  uint16_t bsslTxSize = 512;
-#else
-  uint16_t bsslRxSize = 16384;
-  uint16_t bsslTxSize = 512;
-#endif
-  X509List *x509 = nullptr;
   SPI_ETH_Module *eth = NULL;
 #endif
-#endif
-
-  bool clockReady = false;
 };
 
 #endif /* GS_TCP_Client_H */

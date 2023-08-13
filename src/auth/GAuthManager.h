@@ -1,9 +1,9 @@
 /**
- * Google Sheet Client, GAuthManager v1.0.2
+ * Google Sheet Client, GAuthManager v1.0.3
  *
  * This library supports Espressif ESP8266, ESP32 and Raspberry Pi Pico MCUs.
  *
- * Created March 5, 2023
+ * Created August 13, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -28,12 +28,16 @@
  */
 #ifndef GAUTH_MANAGER_H
 #define GAUTH_MANAGER_H
+
 #include <Arduino.h>
 #include "mbfs/MB_MCU.h"
-#include "client/GS_TCP_Client.h"
+
+#if __has_include(<FS.h>)
 #include <FS.h>
+#endif
+
 #include "mbfs/MB_FS.h"
-#include "MB_NTP.h"
+#include "client/GS_TCP_Client.h"
 #include "GS_Const.h"
 
 class GAuthManager
@@ -51,12 +55,10 @@ public:
 private:
     GS_TCP_Client *tcpClient = nullptr;
     bool localTCPClient = false;
-    gauth_cfg_t *config = nullptr;
+    esp_google_sheet_auth_cfg_t *config = nullptr;
     MB_FS *mbfs = nullptr;
     uint32_t *mb_ts = nullptr;
     uint32_t *mb_ts_offset = nullptr;
-    MB_NTP ntpClient;
-    UDP *udp= nullptr;
     float gmtOffset = 0;
 #if defined(ESP8266)
     callback_function_t esp8266_cb = nullptr;
@@ -71,8 +73,13 @@ private:
     unsigned long last_reconnect_millis = 0;
     uint16_t reconnect_tmo = 10 * 1000;
 
+    esp_google_sheet_client_type _cli_type = esp_google_sheet_client_type_undefined;
+    ESP_GOOGLE_SHEET_CLIENT_NetworkConnectionRequestCallback _net_con_cb = NULL;
+    ESP_GOOGLE_SHEET_CLIENT_NetworkStatusRequestCallback _net_stat_cb = NULL;
+    Client *_cli = nullptr;
+
     /* intitialize the class */
-    void begin(gauth_cfg_t *cfg, MB_FS *mbfs, uint32_t *mb_ts, uint32_t *mb_ts_offset);
+    void begin(esp_google_sheet_auth_cfg_t *cfg, MB_FS *mbfs, uint32_t *mb_ts, uint32_t *mb_ts_offset);
     void end();
     void newClient(GS_TCP_Client **client);
     void freeClient(GS_TCP_Client **client);
@@ -112,7 +119,6 @@ private:
     bool handleResponse(GS_TCP_Client *client, int &httpCode, MB_String &payload, bool stopSession = true);
     /* process the tokens (generation, signing, request and refresh) */
     void tokenProcessingTask();
-    bool checkUDP(UDP *udp, bool &ret, bool &_token_processing_task_enable, float gmtOffset);
     /* encode and sign the JWT token */
     bool createJWT();
     /* request or refresh the token */
@@ -158,11 +164,9 @@ private:
     }
 #endif
 
-#if defined(MB_ARDUINO_PICO)
-#if __has_include(<WiFiMulti.h>)
-#define HAS_WIFIMULTI
+#if defined(ESP_GOOGLE_SHEET_CLIENT_HAS_WIFIMULTI)
     WiFiMulti *multi = nullptr;
-#endif
+
 #endif
 };
 

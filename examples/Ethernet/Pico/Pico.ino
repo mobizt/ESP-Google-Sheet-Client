@@ -10,8 +10,7 @@
  *
  */
 
-// This example shows how to connect to Google API via ethernet using external SSL client
-// This example is for Raspberri Pi Pico and W5500 Ethernet module.
+// This example shows how to connect to Google API via ethernet using Raspberri Pi Pico and W5500 Ethernet module.
 
 /**
  *
@@ -38,9 +37,6 @@
 
 #include <Arduino.h>
 #include <ESP_Google_Sheet_Client.h>
-
-// https://github.com/mobizt/ESP_SSLClient
-#include <ESP_SSLClient.h>
 
 #include <Ethernet.h>
 
@@ -72,17 +68,7 @@ void tokenStatusCallback(TokenInfo info);
 // The network interface devices that can be used to handle SSL data should
 // have large memory buffer up to 1k - 2k or more, otherwise the SSL/TLS handshake
 // will fail.
-EthernetClient basic_client;
-
-// This is the wrapper client that utilized the basic client for io and
-// provides the mean for the data encryption and decryption before sending to or after read from the io.
-// The most probable failures are related to the basic client itself that may not provide the buffer
-// that large enough for SSL data.
-// The SSL client can do nothing for this case, you should increase the basic client buffer memory.
-ESP_SSLClient ssl_client;
-
-// UDP Client for NTP Time synching
-EthernetUDP udpClient;
+EthernetClient eth;
 
 void ResetEthernet()
 {
@@ -137,12 +123,9 @@ void setup()
 
     delay(5000);
 
-    Serial.printf("ESP Google Sheet Client v%s\n\n", ESP_GOOGLE_SHEET_CLIENT_VERSION);
+    GSheet.printf("ESP Google Sheet Client v%s\n\n", ESP_GOOGLE_SHEET_CLIENT_VERSION);
 
     networkConnection();
-
-    ssl_client.setClient(&basic_client);
-    ssl_client.setInsecure();
 }
 
 void loop()
@@ -168,10 +151,7 @@ void setupGsheet()
     GSheet.setTokenCallback(tokenStatusCallback);
 
     /* Assign the pointer to global defined external SSL Client object and required callback functions */
-    GSheet.setExternalClient(&ssl_client, networkConnection, networkStatusRequestCallback);
-
-    /* Assign UDP client and gmt offset for NTP time synching when using external SSL client */
-    GSheet.setUDPClient(&udpClient, 3);
+    GSheet.setExternalClient(&eth, networkConnection, networkStatusRequestCallback);
 
     // Set the seconds to refresh the auth token before expire (60 to 3540, default is 300 seconds)
     GSheet.setPrerefreshSeconds(10 * 60);
@@ -184,13 +164,13 @@ void setupGsheet()
 
 void tokenStatusCallback(TokenInfo info)
 {
-    if (info.status == esp_signer_token_status_error)
+    if (info.status == token_status_error)
     {
-        Serial.printf("Token info: type = %s, status = %s\n", GSheet.getTokenType(info).c_str(), GSheet.getTokenStatus(info).c_str());
-        Serial.printf("Token error: %s\n", GSheet.getTokenError(info).c_str());
+        GSheet.printf("Token info: type = %s, status = %s\n", GSheet.getTokenType(info).c_str(), GSheet.getTokenStatus(info).c_str());
+        GSheet.printf("Token error: %s\n", GSheet.getTokenError(info).c_str());
     }
     else
     {
-        Serial.printf("Token info: type = %s, status = %s\n", GSheet.getTokenType(info).c_str(), GSheet.getTokenStatus(info).c_str());
+        GSheet.printf("Token info: type = %s, status = %s\n", GSheet.getTokenType(info).c_str(), GSheet.getTokenStatus(info).c_str());
     }
 }

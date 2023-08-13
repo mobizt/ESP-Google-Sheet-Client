@@ -1,5 +1,5 @@
 #ifndef ESP_GOOGLE_SHEET_CLIENT_VERSION
-#define ESP_GOOGLE_SHEET_CLIENT_VERSION "1.3.6"
+#define ESP_GOOGLE_SHEET_CLIENT_VERSION "1.4.0"
 #endif
 
 /**
@@ -7,7 +7,7 @@
  *
  * This library supports Espressif ESP8266 and ESP32 MCUs
  *
- * Created June 19, 2023
+ * Created August 13, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2023 K. Suwatchai (Mobizt)
@@ -34,8 +34,8 @@
 #include <Arduino.h>
 #include "mbfs/MB_MCU.h"
 
-#ifndef ESP_Google_Sheet_Client_H
-#define ESP_Google_Sheet_Client_H
+#ifndef ESP_GOOGLE_SHEET_CLIEN_H
+#define ESP_GOOGLE_SHEET_CLIEN_H
 
 #include "auth/GAuthManager.h"
 
@@ -65,7 +65,7 @@ private:
         host_type_drive
     };
 
-    gauth_cfg_t config;
+    esp_google_sheet_auth_cfg_t config;
     GAuthManager authMan;
     MB_FS mbfs;
     uint32_t mb_ts = 0;
@@ -113,11 +113,9 @@ private:
     MB_String mGetValue(MB_String &response, const char *key);
     bool createPermission(MB_String &response, const char *fileId, const char *role, const char *type, const char *email);
     bool setClock(float gmtOffset);
-#if defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-    void setClient(Client *client, GS_NetworkConnectionRequestCallback networkConnectionCB,
-                   GS_NetworkStatusRequestCallback networkStatusCB);
-    void setUDPClient(UDP *client, float gmtOffset = 0);
-#endif
+    void setClient(Client *client, ESP_GOOGLE_SHEET_CLIENT_NetworkConnectionRequestCallback networkConnectionCB,
+                   ESP_GOOGLE_SHEET_CLIENT_NetworkStatusRequestCallback networkStatusCB);
+    void setGSMClient(Client *client, void *modem = nullptr, const char *pin = nullptr, const char *apn = nullptr, const char *user = nullptr, const char *password = nullptr);
     bool setSecure();
     void setCert(const char *ca);
     void setCertFile(const char *filename, esp_google_sheet_file_storage_type type);
@@ -1393,7 +1391,7 @@ public:
      * @param client_email (string) The Service Account's client email.
      * @param project_id (string) The project ID.
      * @param private_key (string) The Service Account's private key.
-     * @param eth (optional for ESP8266 only) The pointer to ESP8266 lwIP network class 
+     * @param eth (optional for ESP8266 only) The pointer to ESP8266 lwIP network class
      * e.g. ENC28J60lwIP, Wiznet5100lwIP and Wiznet5500lwIP.
      *
      */
@@ -1410,7 +1408,7 @@ public:
      *
      * @param service_account_file (string) The Service Account's JSON key file.
      * @param storage_type (esp_google_sheet_file_storage_type) The JSON key file storage type e.g. esp_google_sheet_file_storage_type_flash and esp_google_sheet_file_storage_type_sd.
-     * @param eth (optional for ESP8266 only) The pointer to ESP8266 lwIP network class 
+     * @param eth (optional for ESP8266 only) The pointer to ESP8266 lwIP network class
      * e.g. ENC28J60lwIP, Wiznet5100lwIP and Wiznet5500lwIP.
      */
     template <typename T1 = const char *>
@@ -1470,23 +1468,24 @@ public:
      * @param networkConnectionCB The function that handles the network connection.
      * @param networkStatusCB The function that handle the network connection status acknowledgement.
      */
-    void setExternalClient(Client *client, GS_NetworkConnectionRequestCallback networkConnectionCB,
-                           GS_NetworkStatusRequestCallback networkStatusCB)
+    void setExternalClient(Client *client, ESP_GOOGLE_SHEET_CLIENT_NetworkConnectionRequestCallback networkConnectionCB,
+                           ESP_GOOGLE_SHEET_CLIENT_NetworkStatusRequestCallback networkStatusCB)
     {
-#if defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
         gsheet->setClient(client, networkConnectionCB, networkStatusCB);
-#endif
     }
 
-    /** Assign UDP client and gmt offset for NTP time synching when using external SSL client
-     * @param client The pointer to UDP client based on the network type.
-     * @param gmtOffset The GMT time offset.
+    /** Assign TinyGsm Clients.
+     *
+     * @param client The pointer to TinyGsmClient.
+     * @param modem The pointer to TinyGsm modem object. Modem should be initialized and/or set mode before transfering data
+     * @param pin The SIM pin.
+     * @param apn The GPRS APN (Access Point Name).
+     * @param user The GPRS user.
+     * @param password The GPRS password.
      */
-    void setUDPClient(UDP *client, float gmtOffset = 0)
+    void setGSMClient(Client *client, void *modem = nullptr, const char *pin = nullptr, const char *apn = nullptr, const char *user = nullptr, const char *password = nullptr)
     {
-#if defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-        gsheet->setUDPClient(client, gmtOffset);
-#endif
+        gsheet->setGSMClient(client, modem, pin, apn, user, password);
     }
 
     /** Set the network status acknowledgement.
@@ -1568,6 +1567,43 @@ public:
     /** Force the token to expire immediately and refresh.
      */
     void refreshToken() { gsheet->authMan.refresh(); };
+
+    /** Set system time with timestamp.
+     *
+     * @param ts timestamp in seconds from midnight Jan 1, 1970.
+     * @return Boolean type status indicates the success of the operation.
+     */
+    bool setSystemTime(time_t ts) { return gsheet->authMan.setTime(ts); }
+
+    /**
+     * Formatted printing on Serial.
+     *
+     */
+    void printf(const char *format, ...)
+    {
+        int size = 2048;
+        char s[size];
+        va_list va;
+        va_start(va, format);
+        vsnprintf(s, size, format, va);
+        va_end(va);
+        Serial.print(s);
+    }
+
+    /** Get free Heap memory.
+     *
+     * @return Free memory amount in byte.
+     */
+    int getFreeHeap()
+    {
+#if defined(MB_ARDUINO_ESP)
+        return ESP.getFreeHeap();
+#elif defined(MB_ARDUINO_PICO)
+        return rp2040.getFreeHeap();
+#else
+        return 0;
+#endif
+    }
 
     /** Reset stored config and auth credentials.
      *

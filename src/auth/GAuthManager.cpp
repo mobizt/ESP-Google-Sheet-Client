@@ -1,9 +1,9 @@
 /**
- * Google Sheet Client, GAuthManager v1.0.2
+ * Google Sheet Client, GAuthManager v1.0.3
  *
  * This library supports Espressif ESP8266, ESP32 and Raspberry Pi Pico MCUs.
  *
- * Created March 5, 2023
+ * Created August 13, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -43,7 +43,7 @@ GAuthManager::~GAuthManager()
     end();
 }
 
-void GAuthManager::begin(gauth_cfg_t *cfg, MB_FS *mbfs, uint32_t *mb_ts, uint32_t *mb_ts_offset)
+void GAuthManager::begin(esp_google_sheet_auth_cfg_t *cfg, MB_FS *mbfs, uint32_t *mb_ts, uint32_t *mb_ts_offset)
 {
     this->config = cfg;
     this->mbfs = mbfs;
@@ -54,7 +54,7 @@ void GAuthManager::begin(gauth_cfg_t *cfg, MB_FS *mbfs, uint32_t *mb_ts, uint32_
 void GAuthManager::end()
 {
     freeJson();
-#if defined(HAS_WIFIMULTI)
+#if defined(ESP_GOOGLE_SHEET_CLIENT_HAS_WIFIMULTI)
     if (multi)
         delete multi;
     multi = nullptr;
@@ -67,17 +67,28 @@ void GAuthManager::newClient(GS_TCP_Client **client)
 {
 
     freeClient(client);
-
     if (!*client)
     {
         *client = new GS_TCP_Client();
+        // restore only external client (gsm client integration cannot restore)
+        if (_cli_type == esp_google_sheet_client_type_external_basic_client)
+            (*client)->setClient(_cli, _net_con_cb, _net_stat_cb);
+        else
+            (*client)->_client_type = _cli_type;
     }
 }
 
 void GAuthManager::freeClient(GS_TCP_Client **client)
 {
     if (*client)
+    {
+        // Keep external client pointers
+        _cli_type = (*client)->type();
+        _net_con_cb = (*client)->_network_connection_cb;
+        _net_stat_cb = (*client)->_network_status_cb;
+        _cli = (*client)->_basic_client;
         delete *client;
+    }
     *client = nullptr;
 }
 
@@ -187,9 +198,9 @@ time_t GAuthManager::getTime()
 bool GAuthManager::setTime(time_t ts)
 {
 
-#if !defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT) && (defined(ESP8266) || defined(ESP32) || defined(MB_ARDUINO_PICO))
+#if defined(ESP8266) || defined(ESP32) || defined(MB_ARDUINO_PICO)
 
-    if (TimeHelper::setTimestamp(ts) == 0)
+    if (TimeHelper::setTimestamp(ts, mb_ts_offset) == 0)
     {
         this->ts = time(nullptr);
         *mb_ts = this->ts;
@@ -202,7 +213,7 @@ bool GAuthManager::setTime(time_t ts)
     }
 
 #else
-    if (ts > GS_DEFAULT_TS)
+    if (ts > ESP_GOOGLE_SHEET_CLIENT_DEFAULT_TS)
     {
         *mb_ts_offset = ts - millis() / 1000;
         this->ts = ts;
@@ -232,7 +243,7 @@ void GAuthManager::adjustTime(time_t &now)
     now = getTime(); // returns timestamp (synched) or millis/1000 (unsynched)
 
     // if time has changed (synched or manually set) after token has been generated, update its expiration
-    if (config->signer.tokens.expires > 0 && config->signer.tokens.expires < GS_DEFAULT_TS && now > GS_DEFAULT_TS)
+    if (config->signer.tokens.expires > 0 && config->signer.tokens.expires < ESP_GOOGLE_SHEET_CLIENT_DEFAULT_TS && now > ESP_GOOGLE_SHEET_CLIENT_DEFAULT_TS)
         /* new expiry time (timestamp) = current timestamp - total seconds since last token request - 60 */
         config->signer.tokens.expires += now - (millis() - config->signer.tokens.last_millis) / 1000 - 60;
 
@@ -266,7 +277,7 @@ bool GAuthManager::readyToSync()
 {
     bool ret = false;
     // To detain the next synching using lat synching millis
-    if (config && millis() - config->internal.last_time_sync_millis > GS_TIME_SYNC_INTERVAL)
+    if (config && millis() - config->internal.last_time_sync_millis > ESP_GOOGLE_SHEET_CLIENT_TIME_SYNC_INTERVAL)
     {
         config->internal.last_time_sync_millis = millis();
         ret = true;
@@ -342,13 +353,13 @@ bool GAuthManager::handleToken()
                     config->signer.tokens.status = token_status_error;
                     if (use_sa_key_file && !valid_key_file)
                     {
-                        errorToString(GS_ERROR_SERVICE_ACCOUNT_JSON_FILE_PARSING_ERROR, config->signer.tokens.error.message);
-                        config->signer.tokens.error.code = GS_ERROR_SERVICE_ACCOUNT_JSON_FILE_PARSING_ERROR;
+                        errorToString(ESP_GOOGLE_SHEET_CLIENT_ERROR_SERVICE_ACCOUNT_JSON_FILE_PARSING_ERROR, config->signer.tokens.error.message);
+                        config->signer.tokens.error.code = ESP_GOOGLE_SHEET_CLIENT_ERROR_SERVICE_ACCOUNT_JSON_FILE_PARSING_ERROR;
                     }
                     else
                     {
-                        errorToString(GS_ERROR_MISSING_SERVICE_ACCOUNT_CREDENTIALS, config->signer.tokens.error.message);
-                        config->signer.tokens.error.code = GS_ERROR_MISSING_SERVICE_ACCOUNT_CREDENTIALS;
+                        errorToString(ESP_GOOGLE_SHEET_CLIENT_ERROR_MISSING_SERVICE_ACCOUNT_CREDENTIALS, config->signer.tokens.error.message);
+                        config->signer.tokens.error.code = ESP_GOOGLE_SHEET_CLIENT_ERROR_MISSING_SERVICE_ACCOUNT_CREDENTIALS;
                     }
                     sendTokenStatusCB();
                     return false;
@@ -392,28 +403,6 @@ void GAuthManager::freeJson()
     resultPtr = nullptr;
 }
 
-bool GAuthManager::checkUDP(UDP *udp, bool &ret, bool &_token_processing_task_enable, float gmtOffset)
-{
-#if defined(ESP_GOOGLE_SHEET_CLIENT_ENABLE_EXTERNAL_CLIENT)
-
-    if (udp)
-        ntpClient.begin(udp, "pool.ntp.org" /* NTP host */, 123 /* NTP port */, gmtOffset * 3600 /* timezone offset in seconds */);
-    else
-    {
-        config->signer.tokens.error.message.clear();
-        setTokenError(GS_ERROR_UDP_CLIENT_REQUIRED);
-        sendTokenStatusCB();
-        config->signer.tokens.status = token_status_on_initialize;
-        config->signer.step = gauth_jwt_generation_step_begin;
-        _token_processing_task_enable = false;
-        ret = true;
-        return false;
-    }
-#endif
-
-    return true;
-}
-
 void GAuthManager::tokenProcessingTask()
 {
     // We don't have to use memory reserved tasks e.g., RTOS task in ESP32 for this JWT
@@ -427,15 +416,6 @@ void GAuthManager::tokenProcessingTask()
 
     config->signer.tokenTaskRunning = true;
 
-    // flag set for valid time required
-    bool sslValidTime = false;
-
-#if defined(ESP8266) || defined(MB_ARDUINO_PICO)
-    // valid time required for SSL handshake using server certificate in ESP8266
-    if (config->cert.data != NULL || config->cert.file.length() > 0)
-        sslValidTime = true;
-#endif
-
     time_t now = getTime();
 
     while (!ret && config->signer.tokens.status != token_status_ready)
@@ -443,14 +423,17 @@ void GAuthManager::tokenProcessingTask()
         Utils::idle();
         // check time if clock synching once set in the JWT token generating process (during beginning step)
         // or valid time required for SSL handshake in ESP8266
-        if (!config->internal.clock_rdy && (config->internal.clock_synched || sslValidTime))
+        if (!config->internal.clock_rdy)
         {
             if (readyToSync())
             {
                 if (isSyncTimeOut())
                 {
                     config->signer.tokens.error.message.clear();
-                    setTokenError(GS_ERROR_NTP_SYNC_TIMED_OUT);
+                    if (_cli_type == esp_google_sheet_client_type_internal_basic_client)
+                        setTokenError(ESP_GOOGLE_SHEET_CLIENT_ERROR_NTP_SYNC_TIMED_OUT);
+                    else
+                        setTokenError(ESP_GOOGLE_SHEET_CLIENT_ERROR_SYS_TIME_IS_NOT_READY);
                     sendTokenStatusCB();
                     config->signer.tokens.status = token_status_on_initialize;
                     config->internal.last_jwt_generation_error_cb_millis = 0;
@@ -461,11 +444,18 @@ void GAuthManager::tokenProcessingTask()
                 reconnect();
             }
 
-            if (!checkUDP(udp, ret, _token_processing_task_enable, config->time_zone))
-                continue;
-
             // check or set time again
-            TimeHelper::syncClock(&ntpClient, mb_ts, mb_ts_offset, config->time_zone, config);
+            if (_cli_type == esp_google_sheet_client_type_external_gsm_client)
+            {
+                uint32_t _time = tcpClient->gprsGetTime();
+                if (_time > 0)
+                {
+                    *mb_ts = _time;
+                    TimeHelper::setTimestamp(_time, mb_ts_offset);
+                }
+            }
+            else
+                TimeHelper::syncClock(mb_ts, mb_ts_offset, config->time_zone, config);
 
             // exit task immediately if time is not ready synched
             // which handleToken function should run repeatedly to enter this function again.
@@ -481,11 +471,9 @@ void GAuthManager::tokenProcessingTask()
             (millis() - config->internal.last_jwt_begin_step_millis > config->timeout.tokenGenerationBeginStep ||
              config->internal.last_jwt_begin_step_millis == 0))
         {
-            if (!checkUDP(udp, ret, _token_processing_task_enable, config->time_zone))
-                continue;
 
             // time must be set first
-            TimeHelper::syncClock(&ntpClient, mb_ts, mb_ts_offset, config->time_zone, config);
+            TimeHelper::syncClock(mb_ts, mb_ts_offset, config->time_zone, config);
             config->internal.last_jwt_begin_step_millis = millis();
 
             if (config->internal.clock_rdy)
@@ -514,7 +502,7 @@ void GAuthManager::tokenProcessingTask()
 
                 // send error cb
                 if (!reconnect())
-                    handleTaskError(GS_ERROR_TCP_ERROR_CONNECTION_LOST);
+                    handleTaskError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_ERROR_CONNECTION_LOST);
 
                 // reset state and exit loop
                 config->signer.step = ret || getTime() - now > 3599 ? gauth_jwt_generation_step_begin : gauth_jwt_generation_step_exchange;
@@ -568,11 +556,11 @@ bool GAuthManager::refreshToken()
 
     req.clear();
     if (response_code < 0)
-        return handleTaskError(GS_ERROR_TCP_ERROR_CONNECTION_LOST);
+        return handleTaskError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_ERROR_CONNECTION_LOST);
 
     struct gauth_auth_token_error_t error;
 
-    int httpCode = GS_ERROR_HTTP_CODE_REQUEST_TIMEOUT;
+    int httpCode = ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_REQUEST_TIMEOUT;
     MB_String payload;
     if (handleResponse(tcpClient, httpCode, payload))
     {
@@ -598,13 +586,13 @@ bool GAuthManager::refreshToken()
             if (JsonHelper::parse(jsonPtr, resultPtr, gauth_pgm_str_19 /* "expires_in" */))
                 getExpiration(resultPtr->to<const char *>());
 
-            return handleTaskError(GS_ERROR_TOKEN_COMPLETE_NOTIFY);
+            return handleTaskError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TOKEN_COMPLETE_NOTIFY);
         }
 
-        return handleTaskError(GS_ERROR_TOKEN_ERROR_UNNOTIFY);
+        return handleTaskError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TOKEN_ERROR_UNNOTIFY);
     }
 
-    return handleTaskError(GS_ERROR_HTTP_CODE_REQUEST_TIMEOUT, httpCode);
+    return handleTaskError(ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_REQUEST_TIMEOUT, httpCode);
 }
 
 void GAuthManager::setTokenError(int code)
@@ -635,7 +623,7 @@ bool GAuthManager::handleTaskError(int code, int httpCode)
     switch (code)
     {
 
-    case GS_ERROR_TCP_ERROR_CONNECTION_LOST:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_ERROR_CONNECTION_LOST:
 
         // Show error based on connection status
         config->signer.tokens.error.message.clear();
@@ -643,7 +631,7 @@ bool GAuthManager::handleTaskError(int code, int httpCode)
         config->internal.last_jwt_generation_error_cb_millis = 0;
         sendTokenStatusCB();
         break;
-    case GS_ERROR_HTTP_CODE_REQUEST_TIMEOUT:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_REQUEST_TIMEOUT:
 
         // Request time out?
         if (httpCode == 0)
@@ -672,13 +660,13 @@ bool GAuthManager::handleTaskError(int code, int httpCode)
     freeJson();
 
     // reset token processing state
-    if (code == GS_ERROR_TOKEN_COMPLETE_NOTIFY || code == GS_ERROR_TOKEN_COMPLETE_UNNOTIFY)
+    if (code == ESP_GOOGLE_SHEET_CLIENT_ERROR_TOKEN_COMPLETE_NOTIFY || code == ESP_GOOGLE_SHEET_CLIENT_ERROR_TOKEN_COMPLETE_UNNOTIFY)
     {
         config->signer.tokens.error.message.clear();
         config->signer.tokens.status = token_status_ready;
         config->signer.step = gauth_jwt_generation_step_begin;
         config->internal.last_jwt_generation_error_cb_millis = 0;
-        if (code == GS_ERROR_TOKEN_COMPLETE_NOTIFY)
+        if (code == ESP_GOOGLE_SHEET_CLIENT_ERROR_TOKEN_COMPLETE_NOTIFY)
             sendTokenStatusCB();
 
         return true;
@@ -704,8 +692,8 @@ bool GAuthManager::handleResponse(GS_TCP_Client *client, int &httpCode, MB_Strin
 
     MB_String header;
 
-    struct gs_server_response_data_t response;
-    struct gs_tcp_response_handler_t tcpHandler;
+    struct esp_google_sheet_server_response_data_t response;
+    struct esp_google_sheet_tcp_response_handler_t tcpHandler;
 
     HttpHelper::intTCPHandler(client, tcpHandler, 2048, 2048, nullptr);
 
@@ -737,7 +725,7 @@ bool GAuthManager::handleResponse(GS_TCP_Client *client, int &httpCode, MB_Strin
                 // Read header, complete?
                 if (HttpHelper::readHeader(mbfs, client, tcpHandler, response))
                 {
-                    if (response.httpCode == GS_ERROR_HTTP_CODE_NO_CONTENT)
+                    if (response.httpCode == ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_NO_CONTENT)
                         tcpHandler.error.code = 0;
 
                     if (Utils::isNoContent(&response))
@@ -791,7 +779,7 @@ bool GAuthManager::handleResponse(GS_TCP_Client *client, int &httpCode, MB_Strin
         return true;
     }
 
-    return httpCode == GS_ERROR_HTTP_CODE_OK;
+    return httpCode == ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_OK;
 }
 
 bool GAuthManager::createJWT()
@@ -856,31 +844,12 @@ bool GAuthManager::createJWT()
         config->signer.encHeader.clear();
         config->signer.encPayload.clear();
 
-// create message digest from encoded header and payload
-#if defined(ESP32)
-        config->signer.hash = MemoryHelper::createBuffer<uint8_t *>(mbfs, config->signer.hashSize);
-        int ret = mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256),
-                             (const unsigned char *)config->signer.encHeadPayload.c_str(),
-                             config->signer.encHeadPayload.length(), config->signer.hash);
-        if (ret != 0)
-        {
-            char *temp = MemoryHelper::createBuffer<char *>(mbfs, 100);
-            mbedtls_strerror(ret, temp, 100);
-            config->signer.tokens.error.message = temp;
-            config->signer.tokens.error.message.insert(0, (const char *)FPSTR("mbedTLS, mbedtls_md: "));
-            MemoryHelper::freeBuffer(mbfs, temp);
-            setTokenError(GS_ERROR_TOKEN_CREATE_HASH);
-            sendTokenStatusCB();
-            MemoryHelper::freeBuffer(mbfs, config->signer.hash);
-            return false;
-        }
-#elif defined(ESP8266) || defined(MB_ARDUINO_PICO)
+        // create message digest from encoded header and payload
         config->signer.hash = MemoryHelper::createBuffer<char *>(mbfs, config->signer.hashSize);
         br_sha256_context mc;
         br_sha256_init(&mc);
         br_sha256_update(&mc, config->signer.encHeadPayload.c_str(), config->signer.encHeadPayload.length());
         br_sha256_out(&mc, config->signer.hash);
-#endif
 
         config->signer.tokens.jwt = config->signer.encHeadPayload;
         config->signer.tokens.jwt += gauth_pgm_str_35; // "."
@@ -892,90 +861,6 @@ bool GAuthManager::createJWT()
     {
         config->signer.tokens.status = token_status_on_signing;
 
-#if defined(ESP32)
-        config->signer.pk_ctx = new mbedtls_pk_context();
-        mbedtls_pk_init(config->signer.pk_ctx);
-
-        // parse priv key
-        int ret = 0;
-        if (config->signer.pk.length() > 0)
-            ret = mbedtls_pk_parse_key(config->signer.pk_ctx,
-                                       (const unsigned char *)config->signer.pk.c_str(),
-                                       config->signer.pk.length() + 1, NULL, 0);
-        else if (strlen_P(config->service_account.data.private_key) > 0)
-            ret = mbedtls_pk_parse_key(config->signer.pk_ctx,
-                                       (const unsigned char *)config->service_account.data.private_key,
-                                       strlen_P(config->service_account.data.private_key) + 1, NULL, 0);
-
-        if (ret != 0)
-        {
-            char *temp = MemoryHelper::createBuffer<char *>(mbfs, 100);
-            mbedtls_strerror(ret, temp, 100);
-            config->signer.tokens.error.message = temp;
-            config->signer.tokens.error.message.insert(0, (const char *)FPSTR("mbedTLS, mbedtls_pk_parse_key: "));
-            MemoryHelper::freeBuffer(mbfs, temp);
-            setTokenError(GS_ERROR_TOKEN_PARSE_PK);
-            sendTokenStatusCB();
-            mbedtls_pk_free(config->signer.pk_ctx);
-            MemoryHelper::freeBuffer(mbfs, config->signer.hash);
-            delete config->signer.pk_ctx;
-            config->signer.pk_ctx = nullptr;
-            return false;
-        }
-
-        // generate RSA signature from private key and message digest
-        config->signer.signature = MemoryHelper::createBuffer<unsigned char *>(mbfs, config->signer.signatureSize);
-        size_t sigLen = 0;
-        config->signer.entropy_ctx = new mbedtls_entropy_context();
-        config->signer.ctr_drbg_ctx = new mbedtls_ctr_drbg_context();
-        mbedtls_entropy_init(config->signer.entropy_ctx);
-        mbedtls_ctr_drbg_init(config->signer.ctr_drbg_ctx);
-        mbedtls_ctr_drbg_seed(config->signer.ctr_drbg_ctx, mbedtls_entropy_func, config->signer.entropy_ctx, NULL, 0);
-
-        ret = mbedtls_pk_sign(config->signer.pk_ctx, MBEDTLS_MD_SHA256,
-                              (const unsigned char *)config->signer.hash, config->signer.hashSize,
-                              config->signer.signature, &sigLen,
-                              mbedtls_ctr_drbg_random, config->signer.ctr_drbg_ctx);
-        if (ret != 0)
-        {
-            char *temp = MemoryHelper::createBuffer<char *>(mbfs, 100);
-            mbedtls_strerror(ret, temp, 100);
-            config->signer.tokens.error.message = temp;
-            config->signer.tokens.error.message.insert(0, (const char *)FPSTR("mbedTLS, mbedtls_pk_sign: "));
-            MemoryHelper::freeBuffer(mbfs, temp);
-            setTokenError(GS_ERROR_TOKEN_SIGN);
-            sendTokenStatusCB();
-        }
-        else
-        {
-            config->signer.encSignature.clear();
-            size_t len = Base64Helper::encodedLength(config->signer.signatureSize);
-            char *buf = MemoryHelper::createBuffer<char *>(mbfs, len);
-            Base64Helper::encodeUrl(mbfs, buf, config->signer.signature, config->signer.signatureSize);
-            config->signer.encSignature = buf;
-            MemoryHelper::freeBuffer(mbfs, buf);
-
-            config->signer.tokens.jwt += config->signer.encSignature;
-            config->signer.pk.clear();
-            config->signer.encSignature.clear();
-        }
-
-        MemoryHelper::freeBuffer(mbfs, config->signer.signature);
-        MemoryHelper::freeBuffer(mbfs, config->signer.hash);
-        mbedtls_pk_free(config->signer.pk_ctx);
-        mbedtls_entropy_free(config->signer.entropy_ctx);
-        mbedtls_ctr_drbg_free(config->signer.ctr_drbg_ctx);
-        delete config->signer.pk_ctx;
-        delete config->signer.entropy_ctx;
-        delete config->signer.ctr_drbg_ctx;
-
-        config->signer.pk_ctx = nullptr;
-        config->signer.entropy_ctx = nullptr;
-        config->signer.ctr_drbg_ctx = nullptr;
-
-        if (ret != 0)
-            return false;
-#elif defined(ESP8266) || defined(MB_ARDUINO_PICO)
         // RSA private key
         BearSSL::PrivateKey *pk = nullptr;
         Utils::idle();
@@ -987,7 +872,7 @@ bool GAuthManager::createJWT()
 
         if (!pk)
         {
-            setTokenError(GS_ERROR_TOKEN_PARSE_PK);
+            setTokenError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TOKEN_PARSE_PK);
             config->signer.tokens.error.message.insert(0, (const char *)FPSTR("BearSSL, PrivateKey: "));
             sendTokenStatusCB();
             return false;
@@ -995,7 +880,7 @@ bool GAuthManager::createJWT()
 
         if (!pk->isRSA())
         {
-            setTokenError(GS_ERROR_TOKEN_PARSE_PK);
+            setTokenError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TOKEN_PARSE_PK);
             config->signer.tokens.error.message.insert(0, (const char *)FPSTR("BearSSL, isRSA: "));
             sendTokenStatusCB();
             delete pk;
@@ -1032,12 +917,11 @@ bool GAuthManager::createJWT()
         }
         else
         {
-            setTokenError(GS_ERROR_TOKEN_SIGN);
+            setTokenError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TOKEN_SIGN);
             config->signer.tokens.error.message.insert(0, (const char *)FPSTR("BearSSL, br_rsa_i15_pkcs1_sign: "));
             sendTokenStatusCB();
             return false;
         }
-#endif
     }
 
     return true;
@@ -1067,9 +951,7 @@ bool GAuthManager::initClient(PGM_P subDomain, gauth_auth_token_status status)
     if (!reconnect(tcpClient))
         return false;
 
-#if defined(ESP8266)
     tcpClient->setBufferSizes(2048, 1024);
-#endif
 
     initJson();
 
@@ -1088,7 +970,7 @@ bool GAuthManager::requestTokens(bool refresh)
 
     if (config->signer.tokens.status == token_status_on_request ||
         config->signer.tokens.status == token_status_on_refresh ||
-        ((unsigned long)now < GS_DEFAULT_TS && !refresh) ||
+        ((unsigned long)now < ESP_GOOGLE_SHEET_CLIENT_DEFAULT_TS && !refresh) ||
         config->internal.processing)
         return false;
 
@@ -1136,11 +1018,11 @@ bool GAuthManager::requestTokens(bool refresh)
     req.clear();
 
     if (response_code < 0)
-        return handleTaskError(GS_ERROR_TCP_ERROR_CONNECTION_LOST);
+        return handleTaskError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_ERROR_CONNECTION_LOST);
 
     struct gauth_auth_token_error_t error;
 
-    int httpCode = GS_ERROR_HTTP_CODE_REQUEST_TIMEOUT;
+    int httpCode = ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_REQUEST_TIMEOUT;
     MB_String payload;
     if (handleResponse(tcpClient, httpCode, payload))
     {
@@ -1186,12 +1068,12 @@ bool GAuthManager::requestTokens(bool refresh)
             if (JsonHelper::parse(jsonPtr, resultPtr, gauth_pgm_str_19 /* "expires_in" */))
                 getExpiration(resultPtr->to<const char *>());
 
-            return handleTaskError(GS_ERROR_TOKEN_COMPLETE_NOTIFY);
+            return handleTaskError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TOKEN_COMPLETE_NOTIFY);
         }
-        return handleTaskError(GS_ERROR_TOKEN_ERROR_UNNOTIFY);
+        return handleTaskError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TOKEN_ERROR_UNNOTIFY);
     }
 
-    return handleTaskError(GS_ERROR_HTTP_CODE_REQUEST_TIMEOUT, httpCode);
+    return handleTaskError(ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_REQUEST_TIMEOUT, httpCode);
 }
 
 void GAuthManager::getExpiration(const char *exp)
@@ -1234,10 +1116,10 @@ String GAuthManager::getTokenType(TokenInfo info)
     switch (info.type)
     {
     case token_type_undefined:
-        s = gs_pgm_str_39;
+        s = esp_google_sheet_pgm_str_39;
         break;
     case token_type_oauth2_access_token:
-        s = gs_pgm_str_40;
+        s = esp_google_sheet_pgm_str_40;
         break;
     default:
         break;
@@ -1259,26 +1141,26 @@ String GAuthManager::getTokenStatus(TokenInfo info)
     switch (info.status)
     {
     case token_status_uninitialized:
-        s = gs_pgm_str_41;
+        s = esp_google_sheet_pgm_str_41;
         break;
 
     case token_status_on_initialize:
-        s = gs_pgm_str_42;
+        s = esp_google_sheet_pgm_str_42;
         break;
     case token_status_on_signing:
-        s = gs_pgm_str_43;
+        s = esp_google_sheet_pgm_str_43;
         break;
     case token_status_on_request:
-        s = gs_pgm_str_44;
+        s = esp_google_sheet_pgm_str_44;
         break;
     case token_status_on_refresh:
-        s = gs_pgm_str_45;
+        s = esp_google_sheet_pgm_str_45;
         break;
     case token_status_ready:
-        s = gs_pgm_str_49;
+        s = esp_google_sheet_pgm_str_49;
         break;
     case token_status_error:
-        s = gs_pgm_str_46;
+        s = esp_google_sheet_pgm_str_46;
         break;
     default:
         break;
@@ -1296,9 +1178,9 @@ String GAuthManager::getTokenError(TokenInfo info)
     if (!config)
         return String();
 
-    MB_String s = gs_pgm_str_47;
+    MB_String s = esp_google_sheet_pgm_str_47;
     s += info.error.code;
-    s += gs_pgm_str_48;
+    s += esp_google_sheet_pgm_str_48;
     s += info.error.message;
     return s.c_str();
 }
@@ -1361,23 +1243,23 @@ bool GAuthManager::reconnect(GS_TCP_Client *client, unsigned long dataTime)
     if (!client)
         return false;
 
-    bool status = client->networkReady();
-
     if (dataTime > 0)
     {
-        unsigned long tmo = GS_DEFAULT_SERVER_RESPONSE_TIMEOUT;
-        if (config->timeout.serverResponse < GS_MIN_SERVER_RESPONSE_TIMEOUT ||
-            config->timeout.serverResponse > GS_MAX_SERVER_RESPONSE_TIMEOUT)
-            config->timeout.serverResponse = GS_DEFAULT_SERVER_RESPONSE_TIMEOUT;
+        unsigned long tmo = ESP_GOOGLE_SHEET_CLIENT_DEFAULT_SERVER_RESPONSE_TIMEOUT;
+        if (config->timeout.serverResponse < ESP_GOOGLE_SHEET_CLIENT_MIN_SERVER_RESPONSE_TIMEOUT ||
+            config->timeout.serverResponse > ESP_GOOGLE_SHEET_CLIENT_MAX_SERVER_RESPONSE_TIMEOUT)
+            config->timeout.serverResponse = ESP_GOOGLE_SHEET_CLIENT_DEFAULT_SERVER_RESPONSE_TIMEOUT;
 
         tmo = config->timeout.serverResponse;
 
         if (millis() - dataTime > tmo)
         {
-            response_code = GS_ERROR_TCP_RESPONSE_PAYLOAD_READ_TIMED_OUT;
+            response_code = ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_RESPONSE_PAYLOAD_READ_TIMED_OUT;
             return false;
         }
     }
+
+    bool status = client->networkReady();
 
     if (!status)
     {
@@ -1385,9 +1267,9 @@ bool GAuthManager::reconnect(GS_TCP_Client *client, unsigned long dataTime)
 
         if (autoReconnectWiFi)
         {
-            if (config->timeout.wifiReconnect < GS_MIN_WIFI_RECONNECT_TIMEOUT ||
-                config->timeout.wifiReconnect > GS_MAX_WIFI_RECONNECT_TIMEOUT)
-                config->timeout.wifiReconnect = GS_MIN_WIFI_RECONNECT_TIMEOUT;
+            if (config->timeout.wifiReconnect < ESP_GOOGLE_SHEET_CLIENT_MIN_WIFI_RECONNECT_TIMEOUT ||
+                config->timeout.wifiReconnect > ESP_GOOGLE_SHEET_CLIENT_MAX_WIFI_RECONNECT_TIMEOUT)
+                config->timeout.wifiReconnect = ESP_GOOGLE_SHEET_CLIENT_MIN_WIFI_RECONNECT_TIMEOUT;
 
             if (millis() - config->internal.last_reconnect_millis > config->timeout.wifiReconnect)
             {
@@ -1396,42 +1278,10 @@ bool GAuthManager::reconnect(GS_TCP_Client *client, unsigned long dataTime)
                 {
 
                     config->signer.tokens.error.message.clear();
-                    setTokenError(GS_ERROR_EXTERNAL_CLIENT_NOT_INITIALIZED);
+                    setTokenError(ESP_GOOGLE_SHEET_CLIENT_ERROR_EXTERNAL_CLIENT_NOT_INITIALIZED);
                     sendTokenStatusCB();
                 }
-
-#if defined(ESP32) || defined(ESP8266)
-                WiFi.reconnect();
-#else
-                if (config->wifi.credentials.size() > 0)
-                {
-#if __has_include(<WiFi.h>)
-                    if (!status)
-                    {
-                        WiFi.disconnect();
-#if defined(HAS_WIFIMULTI)
-
-                        if (multi)
-                            delete multi;
-                        multi = nullptr;
-
-                        multi = new WiFiMulti();
-                        for (size_t i = 0; i < config->wifi.credentials.size(); i++)
-                            multi->addAP(config->wifi.credentials[i].ssid.c_str(), config->wifi.credentials[i].password.c_str());
-
-                        if (config->wifi.credentials.size() > 0)
-                            multi->run();
-
-#else
-                        WiFi.begin(config->wifi.credentials[0].ssid.c_str(), config->wifi.credentials[0].password.c_str());
-
-#endif
-                    }
-#endif
-                }
-                else
-                    client->networkReconnect();
-#endif
+                client->networkReconnect();
                 config->internal.last_reconnect_millis = millis();
             }
         }
@@ -1439,7 +1289,7 @@ bool GAuthManager::reconnect(GS_TCP_Client *client, unsigned long dataTime)
         status = client->networkReady();
 
         if (!status)
-            response_code = GS_ERROR_TCP_ERROR_CONNECTION_LOST;
+            response_code = ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_ERROR_CONNECTION_LOST;
     }
 
     return status;
@@ -1463,115 +1313,121 @@ void GAuthManager::errorToString(int httpCode, MB_String &buff)
 
     switch (httpCode)
     {
-    case GS_ERROR_TCP_ERROR_CONNECTION_REFUSED:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_ERROR_CONNECTION_REFUSED:
         buff += F("connection refused");
         return;
-    case GS_ERROR_TCP_ERROR_SEND_REQUEST_FAILED:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_ERROR_SEND_REQUEST_FAILED:
         buff += F("send request failed");
         return;
-    case GS_ERROR_TCP_ERROR_NOT_CONNECTED:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_ERROR_NOT_CONNECTED:
         buff += F("not connected");
         return;
-    case GS_ERROR_TCP_ERROR_CONNECTION_LOST:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_ERROR_CONNECTION_LOST:
         buff += F("connection lost");
         return;
-    case GS_ERROR_TCP_ERROR_NO_HTTP_SERVER:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_ERROR_NO_HTTP_SERVER:
         buff += F("no HTTP server");
         return;
-    case GS_ERROR_HTTP_CODE_BAD_REQUEST:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_CLIENT_MISSING_NETWORK_CONNECTION_CB:
+        buff += F("network connection callback is required");
+        return;
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_CLIENT_MISSING_NETWORK_STATUS_CB:
+        buff += F("network connection status callback is required");
+        return;
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_CLIENT_NOT_INITIALIZED:
+        buff += F("client and/or necessary callback functions are not yet assigned");
+        return;
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_BAD_REQUEST:
         buff += F("bad request");
         return;
-    case GS_ERROR_HTTP_CODE_NON_AUTHORITATIVE_INFORMATION:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_NON_AUTHORITATIVE_INFORMATION:
         buff += F("non-authoriative information");
         return;
-    case GS_ERROR_HTTP_CODE_NO_CONTENT:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_NO_CONTENT:
         buff += F("no content");
         return;
-    case GS_ERROR_HTTP_CODE_MOVED_PERMANENTLY:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_MOVED_PERMANENTLY:
         buff += F("moved permanently");
         return;
-    case GS_ERROR_HTTP_CODE_USE_PROXY:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_USE_PROXY:
         buff += F("use proxy");
         return;
-    case GS_ERROR_HTTP_CODE_TEMPORARY_REDIRECT:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_TEMPORARY_REDIRECT:
         buff += F("temporary redirect");
         return;
-    case GS_ERROR_HTTP_CODE_PERMANENT_REDIRECT:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_PERMANENT_REDIRECT:
         buff += F("permanent redirect");
         return;
-    case GS_ERROR_HTTP_CODE_UNAUTHORIZED:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_UNAUTHORIZED:
         buff += F("unauthorized");
         return;
-    case GS_ERROR_HTTP_CODE_FORBIDDEN:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_FORBIDDEN:
         buff += F("forbidden");
         return;
-    case GS_ERROR_HTTP_CODE_NOT_FOUND:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_NOT_FOUND:
         buff += F("not found");
         return;
-    case GS_ERROR_HTTP_CODE_METHOD_NOT_ALLOWED:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_METHOD_NOT_ALLOWED:
         buff += F("method not allow");
         return;
-    case GS_ERROR_HTTP_CODE_NOT_ACCEPTABLE:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_NOT_ACCEPTABLE:
         buff += F("not acceptable");
         return;
-    case GS_ERROR_HTTP_CODE_PROXY_AUTHENTICATION_REQUIRED:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_PROXY_AUTHENTICATION_REQUIRED:
         buff += F("proxy authentication required");
         return;
-    case GS_ERROR_HTTP_CODE_REQUEST_TIMEOUT:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_REQUEST_TIMEOUT:
         buff += F("request timed out");
         return;
-    case GS_ERROR_HTTP_CODE_LENGTH_REQUIRED:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_LENGTH_REQUIRED:
         buff += F("length required");
         return;
-    case GS_ERROR_HTTP_CODE_TOO_MANY_REQUESTS:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_TOO_MANY_REQUESTS:
         buff += F("too many requests");
         return;
-    case GS_ERROR_HTTP_CODE_REQUEST_HEADER_FIELDS_TOO_LARGE:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_REQUEST_HEADER_FIELDS_TOO_LARGE:
         buff += F("request header fields too larg");
         return;
-    case GS_ERROR_HTTP_CODE_INTERNAL_SERVER_ERROR:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_INTERNAL_SERVER_ERROR:
         buff += F("internal server error");
         return;
-    case GS_ERROR_HTTP_CODE_BAD_GATEWAY:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_BAD_GATEWAY:
         buff += F("bad gateway");
         return;
-    case GS_ERROR_HTTP_CODE_SERVICE_UNAVAILABLE:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_SERVICE_UNAVAILABLE:
         buff += F("service unavailable");
         return;
-    case GS_ERROR_HTTP_CODE_GATEWAY_TIMEOUT:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_GATEWAY_TIMEOUT:
         buff += F("gateway timeout");
         return;
-    case GS_ERROR_HTTP_CODE_HTTP_VERSION_NOT_SUPPORTED:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_HTTP_VERSION_NOT_SUPPORTED:
         buff += F("http version not support");
         return;
-    case GS_ERROR_HTTP_CODE_NETWORK_AUTHENTICATION_REQUIRED:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_NETWORK_AUTHENTICATION_REQUIRED:
         buff += F("network authentication required");
         return;
-    case GS_ERROR_HTTP_CODE_PRECONDITION_FAILED:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_HTTP_CODE_PRECONDITION_FAILED:
         buff += F("Precondition Failed (ETag does not match)");
         return;
-    case GS_ERROR_TCP_RESPONSE_PAYLOAD_READ_TIMED_OUT:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_RESPONSE_PAYLOAD_READ_TIMED_OUT:
         buff += F("response read timed out");
         return;
-    case GS_ERROR_TCP_RESPONSE_READ_FAILED:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_RESPONSE_READ_FAILED:
         buff += F("Response read failed.");
         return;
-    case GS_ERROR_TOKEN_NOT_READY:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_TOKEN_NOT_READY:
         buff += F("token is not ready (revoked or expired)");
         return;
-    case GS_ERROR_TOKEN_SET_TIME:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_TOKEN_SET_TIME:
         buff += F("system time was not set");
         break;
-    case GS_ERROR_TOKEN_PARSE_PK:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_TOKEN_PARSE_PK:
         buff += F("RSA private key parsing failed");
         break;
-    case GS_ERROR_TOKEN_CREATE_HASH:
-        buff += F("create message digest");
-        break;
-    case GS_ERROR_TOKEN_SIGN:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_TOKEN_SIGN:
         buff += F("JWT token signing failed");
         break;
-    case GS_ERROR_TOKEN_EXCHANGE:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_TOKEN_EXCHANGE:
         buff += F("token exchange failed");
         break;
 
@@ -1594,21 +1450,20 @@ void GAuthManager::errorToString(int httpCode, MB_String &buff)
         return;
 #endif
 
-    case GS_ERROR_NTP_SYNC_TIMED_OUT:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_NTP_SYNC_TIMED_OUT:
         buff += F("NTP server time synching failed");
         return;
-    case GS_ERROR_EXTERNAL_CLIENT_NOT_INITIALIZED:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_SYS_TIME_IS_NOT_READY:
+        buff += F("System time or library reference time was not set. Use GSheet.setSystemTime to set time.");
+        return;
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_EXTERNAL_CLIENT_NOT_INITIALIZED:
         buff += F("External client is not yet initialized");
         return;
 
-    case GS_ERROR_UDP_CLIENT_REQUIRED:
-        buff += F("UDP client is required for NTP server time synching based on your network type \ne.g. WiFiUDP or EthernetUDP. Please call GSheet.setUDPClient(&udpClient, gmtOffset); to assign the UDP client.");
-        return;
-
-    case GS_ERROR_MISSING_SERVICE_ACCOUNT_CREDENTIALS:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_MISSING_SERVICE_ACCOUNT_CREDENTIALS:
         buff += F("The Service Account Credentials are missing.");
         return;
-    case GS_ERROR_SERVICE_ACCOUNT_JSON_FILE_PARSING_ERROR:
+    case ESP_GOOGLE_SHEET_CLIENT_ERROR_SERVICE_ACCOUNT_JSON_FILE_PARSING_ERROR:
         buff += F("Unable to parse Service Account JSON file. Please check file name, storage type and its content.");
         return;
     default:

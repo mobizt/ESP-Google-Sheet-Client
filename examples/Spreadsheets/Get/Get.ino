@@ -17,8 +17,13 @@
 #include <WiFi.h>
 #elif defined(ESP8266)
 #include <ESP8266WiFi.h>
+#elif __has_include(<WiFiNINA.h>)
+#include <WiFiNINA.h>
+#elif __has_include(<WiFi101.h>)
+#include <WiFi101.h>
+#elif __has_include(<WiFiS3.h>)
+#include <WiFiS3.h>
 #endif
-#include <ESP_Google_Sheet_Client.h>
 
 // For SD/SD_MMC mounting helper
 #include <GS_SDHelper.h>
@@ -85,7 +90,7 @@ void setup()
     Serial.println();
     Serial.println();
 
-    Serial.printf("ESP Google Sheet Client v%s\n\n", ESP_GOOGLE_SHEET_CLIENT_VERSION);
+    GSheet.printf("ESP Google Sheet Client v%s\n\n", ESP_GOOGLE_SHEET_CLIENT_VERSION);
 
 #if defined(ESP32) || defined(ESP8266)
     WiFi.setAutoReconnect(true);
@@ -192,13 +197,13 @@ void loop()
 
 void tokenStatusCallback(TokenInfo info)
 {
-    if (info.status == esp_signer_token_status_error)
+    if (info.status == token_status_error)
     {
-        Serial.printf("Token info: type = %s, status = %s\n", GSheet.getTokenType(info).c_str(), GSheet.getTokenStatus(info).c_str());
-        Serial.printf("Token error: %s\n", GSheet.getTokenError(info).c_str());
+        GSheet.printf("Token info: type = %s, status = %s\n", GSheet.getTokenType(info).c_str(), GSheet.getTokenStatus(info).c_str());
+        GSheet.printf("Token error: %s\n", GSheet.getTokenError(info).c_str());
     }
     else
     {
-        Serial.printf("Token info: type = %s, status = %s\n", GSheet.getTokenType(info).c_str(), GSheet.getTokenStatus(info).c_str());
+        GSheet.printf("Token info: type = %s, status = %s\n", GSheet.getTokenType(info).c_str(), GSheet.getTokenStatus(info).c_str());
     }
 }

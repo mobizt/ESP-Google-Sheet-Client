@@ -181,7 +181,7 @@ void setup()
     Serial.println();
     Serial.println();
 
-    Serial.printf("ESP Google Sheet Client v%s\n\n", ESP_GOOGLE_SHEET_CLIENT_VERSION);
+    GSheet.printf("ESP Google Sheet Client v%s\n\n", ESP_GOOGLE_SHEET_CLIENT_VERSION);
 
 #if defined(ESP32)
     WiFi.onEvent(WiFiEvent);
@@ -228,13 +228,13 @@ void setupGsheet()
 
 void tokenStatusCallback(TokenInfo info)
 {
-    if (info.status == esp_signer_token_status_error)
+    if (info.status == token_status_error)
     {
-        Serial.printf("Token info: type = %s, status = %s\n", GSheet.getTokenType(info).c_str(), GSheet.getTokenStatus(info).c_str());
-        Serial.printf("Token error: %s\n", GSheet.getTokenError(info).c_str());
+        GSheet.printf("Token info: type = %s, status = %s\n", GSheet.getTokenType(info).c_str(), GSheet.getTokenStatus(info).c_str());
+        GSheet.printf("Token error: %s\n", GSheet.getTokenError(info).c_str());
     }
     else
     {
-        Serial.printf("Token info: type = %s, status = %s\n", GSheet.getTokenType(info).c_str(), GSheet.getTokenStatus(info).c_str());
+        GSheet.printf("Token info: type = %s, status = %s\n", GSheet.getTokenType(info).c_str(), GSheet.getTokenStatus(info).c_str());
     }
 }

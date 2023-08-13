@@ -42,12 +42,14 @@ getTokenStatus  KEYWORD2
 getTokenError   KEYWORD2
 accessToken KEYWORD2
 getExpiredTimestamp KEYWORD2
+setSystemTime   KEYWORD2
+getFreeHeap KEYWORD2
 sdBegin KEYWORD2
 sdMMCBegin  KEYWORD2
 setCert KEYWORD2
 setCertFile KEYWORD2
 setExternalClient   KEYWORD2
-setUDPClient    KEYWORD2
+setGSMClient    KEYWORD2
 addAP   KEYWORD2
 clearAP KEYWORD2
 setPrerefreshSeconds    KEYWORD2

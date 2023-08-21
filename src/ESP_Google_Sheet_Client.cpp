@@ -1,9 +1,9 @@
 /**
- * Google Sheet Client, ESP_GOOGLE_SHEET_CLIENT_Google_Sheet_Client.cpp v1.4.0
+ * Google Sheet Client, ESP_GOOGLE_SHEET_CLIENT_Google_Sheet_Client.cpp v1.4.1
  *
  * This library supports Espressif ESP8266 and ESP32 MCUs
  *
- * Created August 13, 2023
+ * Created August 21, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -192,9 +192,7 @@ void GSheetClass::setCert(const char *ca)
     {
         cert_updated = true;
         cert_addr = addr;
-#if defined(ESP8266) || defined(MB_ARDUINO_PICO)
         waitClockReady();
-#endif
     }
 }
 
@@ -206,10 +204,7 @@ void GSheetClass::setCertFile(const char *filename, esp_google_sheet_file_storag
     if (config.cert.file.length() > 0)
     {
         cert_updated = true;
-
-#if defined(ESP8266) || defined(MB_ARDUINO_PICO)
         waitClockReady();
-#endif
     }
 }
 

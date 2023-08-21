@@ -36,6 +36,16 @@
 #if defined(ESP32)
 #include "IPAddress.h"
 #include "lwip/sockets.h"
+
+#if defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE)
+#define WIFI_HAS_HOST_BY_NAME
+#endif
+#include "../client/WiFiClientImpl.h"
+#define BASE_WIFICLIENT WiFiClientImpl
+
+#elif defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE)
+#include "WiFiClient.h"
+#define BASE_WIFICLIENT WiFiClient
 #endif
 
 #pragma GCC diagnostic ignored "-Wdelete-non-virtual-dtor"
@@ -101,7 +111,8 @@ public:
     _user = user;
     _password = password;
     _modem = modem;
-    _client_type =  esp_google_sheet_client_type_external_gsm_client;
+    _basic_client = client;
+    _client_type = esp_google_sheet_client_type_external_gsm_client;
 #endif
   }
 
@@ -119,11 +130,11 @@ public:
       _x509 = new X509List(caCert);
       _tcp_client->setTrustAnchors(_x509);
 
-      setCertType( esp_google_sheet_cert_type_data);
+      setCertType(esp_google_sheet_cert_type_data);
     }
     else
     {
-      setCertType( esp_google_sheet_cert_type_none);
+      setCertType(esp_google_sheet_cert_type_none);
       setInSecure();
     }
   }
@@ -163,11 +174,11 @@ public:
         _tcp_client->setTrustAnchors(_x509);
         _mbfs->delP(&der);
 
-        setCertType( esp_google_sheet_cert_type_file);
+        setCertType(esp_google_sheet_cert_type_file);
       }
     }
 
-    return getCertType() ==  esp_google_sheet_cert_type_file;
+    return getCertType() == esp_google_sheet_cert_type_file;
   }
 
   /**
@@ -272,7 +283,7 @@ public:
 
   void ethDNSWorkAround(SPI_ETH_Module *eth, const char *host, uint16_t port)
   {
-
+#if defined(ESP_GOOGLE_SHEET_CLIENT_ETH_IS_AVAILABLE)
     if (!eth)
       return;
 
@@ -300,9 +311,10 @@ public:
 #if defined(INC_ENC28J60_LWIP) || defined(INC_W5100_LWIP) || defined(INC_W5500_LWIP)
   ex:
 #if defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE)
-    WiFiClient _client;
+    BASE_WIFICLIENT _client;
     _client.connect(host, port);
     _client.stop();
+#endif
 #endif
 #endif
   }
@@ -316,7 +328,7 @@ public:
 
     // We will not invoke the network status request when device has built-in WiFi or Ethernet and it is connected.
 
-    if (_client_type ==  esp_google_sheet_client_type_external_gsm_client)
+    if (_client_type == esp_google_sheet_client_type_external_gsm_client)
     {
       _network_status = gprsConnected();
       if (!_network_status)
@@ -324,7 +336,7 @@ public:
     }
     else if (WiFI_CONNECTED || ethLinkUp())
       _network_status = true;
-    else if (_client_type ==  esp_google_sheet_client_type_external_basic_client)
+    else if (_client_type == esp_google_sheet_client_type_external_basic_client)
     {
       if (!_network_status_cb)
         _last_error = 1;
@@ -341,7 +353,7 @@ public:
   void networkReconnect()
   {
 
-    if (_client_type ==  esp_google_sheet_client_type_external_basic_client)
+    if (_client_type == esp_google_sheet_client_type_external_basic_client)
     {
 #if defined(ESP_GOOGLE_SHEET_CLIENT_HAS_WIFI_DISCONNECT)
       // We can reconnect WiFi when device connected via built-in WiFi that supports reconnect
@@ -356,12 +368,12 @@ public:
       if (_network_connection_cb)
         _network_connection_cb();
     }
-    else if (_client_type ==  esp_google_sheet_client_type_external_gsm_client)
+    else if (_client_type == esp_google_sheet_client_type_external_gsm_client)
     {
       gprsDisconnect();
       gprsConnect();
     }
-    else if (_client_type ==  esp_google_sheet_client_type_internal_basic_client)
+    else if (_client_type == esp_google_sheet_client_type_internal_basic_client)
     {
 
 #if defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE)
@@ -384,7 +396,7 @@ public:
    * Get the Client type.
    * @return The  esp_google_sheet_client_type enum value.
    */
-   esp_google_sheet_client_type type() { return _client_type; }
+  esp_google_sheet_client_type type() { return _client_type; }
 
   /**
    * Get the Client initialization status.
@@ -395,16 +407,16 @@ public:
     bool rdy = true;
 #if !defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE)
 
-    if (_client_type ==  esp_google_sheet_client_type_external_basic_client &&
+    if (_client_type == esp_google_sheet_client_type_external_basic_client &&
         (!_network_connection_cb || !_network_status_cb))
       rdy = false;
-    else if (_client_type !=  esp_google_sheet_client_type_external_basic_client ||
-             _client_type !=  esp_google_sheet_client_type_external_gsm_client)
+    else if (_client_type != esp_google_sheet_client_type_external_basic_client ||
+             _client_type != esp_google_sheet_client_type_external_gsm_client)
       rdy = false;
 #else
     // assume external client is WiFiClient and network status request callback is not required
     // when device was connected to network using on board WiFi
-    if (_client_type ==  esp_google_sheet_client_type_external_basic_client &&
+    if (_client_type == esp_google_sheet_client_type_external_basic_client &&
         (!_network_connection_cb || (!_network_status_cb && !WiFI_CONNECTED && !ethLinkUp())))
     {
       rdy = false;
@@ -497,17 +509,17 @@ public:
 
     if (!_basic_client)
     {
-      if (_client_type ==  esp_google_sheet_client_type_external_basic_client)
+      if (_client_type == esp_google_sheet_client_type_external_basic_client)
       {
         _last_error = 1;
         return false;
       }
-      else if (_client_type !=  esp_google_sheet_client_type_external_gsm_client)
+      else if (_client_type != esp_google_sheet_client_type_external_gsm_client)
       {
 // Device has no built-in WiFi, external client required.
 #if defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE)
-        _basic_client = new WiFiClient();
-        _client_type =  esp_google_sheet_client_type_internal_basic_client;
+        _basic_client = new BASE_WIFICLIENT();
+        _client_type = esp_google_sheet_client_type_internal_basic_client;
 #else
         _last_error = 1;
         return false;
@@ -521,16 +533,14 @@ public:
       return setError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_ERROR_CONNECTION_REFUSED);
 
 #if defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE) && (defined(ESP32) || defined(ESP8266) || defined(MB_ARDUINO_PICO))
-    if (_client_type ==  esp_google_sheet_client_type_internal_basic_client)
-      reinterpret_cast<WiFiClient *>(_basic_client)->setNoDelay(true);
+    if (_client_type == esp_google_sheet_client_type_internal_basic_client)
+      reinterpret_cast<BASE_WIFICLIENT *>(_basic_client)->setNoDelay(true);
 #endif
 
     // For TCP keepalive should work in ESP8266 core > 3.1.2.
     // https://github.com/esp8266/Arduino/pull/8940
 
-    // Not currently supported by WiFiClientSecure in Arduino Pico core
-
-    if (_client_type ==  esp_google_sheet_client_type_internal_basic_client)
+    if (_client_type == esp_google_sheet_client_type_internal_basic_client)
     {
       if (isKeepAliveSet())
       {
@@ -538,9 +548,9 @@ public:
 
 #if defined(ESP8266)
         if (_tcpKeepIdleSeconds == 0 || _tcpKeepIntervalSeconds == 0 || _tcpKeepCount == 0)
-          reinterpret_cast<WiFiClient *>(_basic_client)->disableKeepAlive();
+          reinterpret_cast<BASE_WIFICLIENT *>(_basic_client)->disableKeepAlive();
         else
-          reinterpret_cast<WiFiClient *>(_basic_client)->keepAlive(_tcpKeepIdleSeconds, _tcpKeepIntervalSeconds, _tcpKeepCount);
+          reinterpret_cast<BASE_WIFICLIENT *>(_basic_client)->keepAlive(_tcpKeepIdleSeconds, _tcpKeepIntervalSeconds, _tcpKeepCount);
 
 #elif defined(ESP32)
 
@@ -786,9 +796,9 @@ public:
     _clock_ready = status;
   }
 
-  void setCertType( esp_google_sheet_cert_type type) { _cert_type = type; }
+  void setCertType(esp_google_sheet_cert_type type) { _cert_type = type; }
 
-   esp_google_sheet_cert_type getCertType() { return _cert_type; }
+  esp_google_sheet_cert_type getCertType() { return _cert_type; }
 
   unsigned long tcpTimeout()
   {
@@ -813,10 +823,10 @@ public:
 
   void clear()
   {
-    if (_basic_client && _client_type ==  esp_google_sheet_client_type_internal_basic_client)
+    if (_basic_client && _client_type == esp_google_sheet_client_type_internal_basic_client)
     {
 #if defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE)
-      delete (WiFiClient *)_basic_client;
+      delete (BASE_WIFICLIENT *)_basic_client;
 #else
       delete _basic_client;
 #endif
@@ -824,7 +834,7 @@ public:
     }
   }
 
-  void setWiFi( esp_google_sheet_wifi *wifi) { _wifi_multi = wifi; }
+  void setWiFi(esp_google_sheet_wifi *wifi) { _wifi_multi = wifi; }
 
   bool gprsConnect()
   {
@@ -909,10 +919,8 @@ public:
   uint32_t gprsGetTime()
   {
 #if defined(ESP_GOOGLE_SHEET_CLIENT_GSM_MODEM_IS_AVAILABLE) && defined(TINY_GSM_MODEM_HAS_TIME)
-
     if (!gprsConnected())
       return 0;
-
     TinyGsm *gsmModem = (TinyGsm *)_modem;
     int year3 = 0;
     int month3 = 0;
@@ -925,7 +933,8 @@ public:
     {
       if (gsmModem->getNetworkTime(&year3, &month3, &day3, &hour3, &min3, &sec3, &timezone))
       {
-        return TimeHelper::getTimestamp(year3, month3, day3, hour3, min3, sec3);
+        //We have to subtract the local GSM network timezone to get GMT time
+        return TimeHelper::getTimestamp(year3, month3, day3, hour3, min3, sec3) - timezone * 3600;
       }
     }
 #endif
@@ -937,7 +946,7 @@ public:
 #if defined(ESP32) && defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE)
     // Actually we wish to use setSocketOption directly but it is ambiguous in old ESP32 core v1.0.x.;
     // Use setOption instead for old core support.
-    return reinterpret_cast<WiFiClient *>(_basic_client)->setOption(option, value);
+    return reinterpret_cast<BASE_WIFICLIENT *>(_basic_client)->setOption(option, value);
 #endif
     return 0;
   }
@@ -965,7 +974,7 @@ private:
 
   MB_FS *_mbfs = nullptr;
   Client *_basic_client = nullptr;
-   esp_google_sheet_wifi *_wifi_multi = nullptr;
+  esp_google_sheet_wifi *_wifi_multi = nullptr;
 
   ESP_GOOGLE_SHEET_CLIENT_NetworkConnectionRequestCallback _network_connection_cb = NULL;
   ESP_GOOGLE_SHEET_CLIENT_NetworkStatusRequestCallback _network_status_cb = NULL;
@@ -983,10 +992,10 @@ private:
   volatile bool _network_status = false;
   int _rx_size = 1024, _tx_size = 512;
   int *response_code = nullptr;
-   esp_google_sheet_auth_cfg_t *_config = nullptr;
+  esp_google_sheet_auth_cfg_t *_config = nullptr;
 
-   esp_google_sheet_cert_type _cert_type =  esp_google_sheet_cert_type_undefined;
-   esp_google_sheet_client_type _client_type =  esp_google_sheet_client_type_undefined;
+  esp_google_sheet_cert_type _cert_type = esp_google_sheet_cert_type_undefined;
+  esp_google_sheet_client_type _client_type = esp_google_sheet_client_type_undefined;
 
 #if defined(ESP8266) || defined(MB_ARDUINO_PICO)
   SPI_ETH_Module *eth = NULL;

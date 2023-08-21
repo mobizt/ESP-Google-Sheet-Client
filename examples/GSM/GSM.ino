@@ -13,7 +13,8 @@
 
 // This example shows how to use TTGO T-A7670 (ESP32 with SIMCom SIMA7670) and TinyGSMClient This example to connect to Google API.
 
-// To allow TinyGSM library integration, the following macro should be defined in src/ESP_Google_Sheet_Client_FS_Config.h.
+// To allow TinyGSM library integration, the following macro should be defined in src/ESP_Google_Sheet_Client_FS_Config.h or
+// your custom config file src/Custom_ESP_GOOGLE_SHEET_CLIENT_FS_Config
 //  #define TINY_GSM_MODEM_SIM7600
 
 #define TINY_GSM_MODEM_SIM7600 // SIMA7670 Compatible with SIM7600 AT instructions
@@ -42,6 +43,9 @@ const char apn[] = "YourAPN";
 const char gprsUser[] = "";
 const char gprsPass[] = "";
 
+#define uS_TO_S_FACTOR 1000000ULL // Conversion factor for micro seconds to seconds
+#define TIME_TO_SLEEP 600         // Time ESP32 will go to sleep (in seconds)
+
 #define UART_BAUD 115200
 #define PIN_DTR 25
 #define PIN_TX 26
@@ -59,7 +63,6 @@ const char gprsPass[] = "";
 #define SD_CS 13
 
 #include <ESP_Google_Sheet_Client.h>
-
 #include <TinyGsmClient.h>
 
 // For how to create Service Account and how to use the library, go to https://github.com/mobizt/ESP-Google-Sheet-Client
@@ -71,12 +74,6 @@ const char gprsPass[] = "";
 
 // Service Account's private key
 const char PRIVATE_KEY[] PROGMEM = "-----BEGIN PRIVATE KEY-----XXXXXXXXXXXX-----END PRIVATE KEY-----\n";
-
-// Set serial for debug console
-#define SerialMon Serial
-
-// Set serial for AT commands (to the module)
-#define SerialAT Serial1
 
 TinyGsm modem(SerialAT);
 
@@ -90,14 +87,35 @@ void setupGsheet();
 
 void tokenStatusCallback(TokenInfo info);
 
-void initModem()
+void setup()
 {
 
-    if (modem.isGprsConnected())
-    {
-        modem.gprsDisconnect();
-        SerialMon.println(F("GPRS disconnected"));
-    }
+    SerialMon.begin(115200);
+
+    delay(10);
+    pinMode(BAT_EN, OUTPUT);
+    digitalWrite(BAT_EN, HIGH);
+
+    // A7670 Reset
+    pinMode(RESET, OUTPUT);
+    digitalWrite(RESET, LOW);
+    delay(100);
+    digitalWrite(RESET, HIGH);
+    delay(3000);
+    digitalWrite(RESET, LOW);
+
+    pinMode(PWR_PIN, OUTPUT);
+    digitalWrite(PWR_PIN, LOW);
+    delay(100);
+    digitalWrite(PWR_PIN, HIGH);
+    delay(1000);
+    digitalWrite(PWR_PIN, LOW);
+
+    DBG("Wait...");
+
+    delay(3000);
+
+    SerialAT.begin(UART_BAUD, SERIAL_8N1, PIN_RX, PIN_TX);
 
     // Restart takes quite some time
     // To skip it, call init() instead of restart()
@@ -118,24 +136,13 @@ void initModem()
     if (modem.waitResponse(10000L) != 1)
     {
         DBG(" setNetworkMode faill");
-        return;
     }
-}
-
-void setup()
-{
-
-    SerialMon.begin(115200);
-
-    SerialAT.begin(UART_BAUD, SERIAL_8N1, PIN_RX, PIN_TX);
 
     String name = modem.getModemName();
     DBG("Modem Name:", name);
 
     String modemInfo = modem.getModemInfo();
     DBG("Modem Info:", modemInfo);
-
-    initModem();
 
     GSheet.printf("ESP Google Sheet Client v%s\n\n", ESP_GOOGLE_SHEET_CLIENT_VERSION);
 

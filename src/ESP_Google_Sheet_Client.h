@@ -1,13 +1,13 @@
 #ifndef ESP_GOOGLE_SHEET_CLIENT_VERSION
-#define ESP_GOOGLE_SHEET_CLIENT_VERSION "1.4.0"
+#define ESP_GOOGLE_SHEET_CLIENT_VERSION "1.4.1"
 #endif
 
 /**
- * Google Sheet Client, ESP_Google_Sheet_Client.h v1.3.6
+ * Google Sheet Client, ESP_Google_Sheet_Client.h v1.4.1
  *
  * This library supports Espressif ESP8266 and ESP32 MCUs
  *
- * Created August 13, 2023
+ * Created August 21, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2023 K. Suwatchai (Mobizt)
@@ -113,6 +113,7 @@ private:
     MB_String mGetValue(MB_String &response, const char *key);
     bool createPermission(MB_String &response, const char *fileId, const char *role, const char *type, const char *email);
     bool setClock(float gmtOffset);
+    bool getTime(float gmtOffset);
     void setClient(Client *client, ESP_GOOGLE_SHEET_CLIENT_NetworkConnectionRequestCallback networkConnectionCB,
                    ESP_GOOGLE_SHEET_CLIENT_NetworkStatusRequestCallback networkStatusCB);
     void setGSMClient(Client *client, void *modem = nullptr, const char *pin = nullptr, const char *apn = nullptr, const char *user = nullptr, const char *password = nullptr);

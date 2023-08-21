@@ -1,9 +1,9 @@
 /**
- * Google Sheet Client, GAuthManager v1.0.3
+ * Google Sheet Client, GAuthManager v1.0.4
  *
  * This library supports Espressif ESP8266, ESP32 and Raspberry Pi Pico MCUs.
  *
- * Created August 13, 2023
+ * Created August 21, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -70,9 +70,15 @@ void GAuthManager::newClient(GS_TCP_Client **client)
     if (!*client)
     {
         *client = new GS_TCP_Client();
-        // restore only external client (gsm client integration cannot restore)
+
         if (_cli_type == esp_google_sheet_client_type_external_basic_client)
             (*client)->setClient(_cli, _net_con_cb, _net_stat_cb);
+        else if (_cli_type == esp_google_sheet_client_type_external_gsm_client)
+        {
+#if defined(ESP_GOOGLE_SHEET_CLIENT_GSM_MODEM_IS_AVAILABLE)
+            (*client)->setGSMClient(_cli, _modem, _pin.c_str(), _apn.c_str(), _user.c_str(), _password.c_str());
+#endif
+        }
         else
             (*client)->_client_type = _cli_type;
     }
@@ -82,11 +88,23 @@ void GAuthManager::freeClient(GS_TCP_Client **client)
 {
     if (*client)
     {
-        // Keep external client pointers
         _cli_type = (*client)->type();
-        _net_con_cb = (*client)->_network_connection_cb;
-        _net_stat_cb = (*client)->_network_status_cb;
         _cli = (*client)->_basic_client;
+        if (_cli_type == esp_google_sheet_client_type_external_basic_client)
+        {
+            _net_con_cb = (*client)->_network_connection_cb;
+            _net_stat_cb = (*client)->_network_status_cb;
+        }
+        else if (_cli_type == esp_google_sheet_client_type_external_gsm_client)
+        {
+#if defined(ESP_GOOGLE_SHEET_CLIENT_GSM_MODEM_IS_AVAILABLE)
+            _pin = (*client)->_pin;
+            _apn = (*client)->_apn;
+            _user = (*client)->_user;
+            _password = (*client)->_password;
+            _modem = (*client)->_modem;
+#endif
+        }
         delete *client;
     }
     *client = nullptr;
@@ -403,6 +421,27 @@ void GAuthManager::freeJson()
     resultPtr = nullptr;
 }
 
+void GAuthManager::tryGetTime()
+{
+    if (!tcpClient || config->internal.clock_rdy)
+        return;
+
+    _cli_type = tcpClient->type();
+
+    if (tcpClient->type() == esp_google_sheet_client_type_external_gsm_client)
+    {
+        uint32_t _time = tcpClient->gprsGetTime();
+        if (_time > 0)
+        {
+            *mb_ts = _time;
+            TimeHelper::setTimestamp(_time, mb_ts_offset);
+            config->internal.clock_rdy = TimeHelper::clockReady(mb_ts, mb_ts_offset);
+        }
+    }
+    else
+        TimeHelper::syncClock(mb_ts, mb_ts_offset, config->time_zone, config);
+}
+
 void GAuthManager::tokenProcessingTask()
 {
     // We don't have to use memory reserved tasks e.g., RTOS task in ESP32 for this JWT
@@ -445,17 +484,7 @@ void GAuthManager::tokenProcessingTask()
             }
 
             // check or set time again
-            if (_cli_type == esp_google_sheet_client_type_external_gsm_client)
-            {
-                uint32_t _time = tcpClient->gprsGetTime();
-                if (_time > 0)
-                {
-                    *mb_ts = _time;
-                    TimeHelper::setTimestamp(_time, mb_ts_offset);
-                }
-            }
-            else
-                TimeHelper::syncClock(mb_ts, mb_ts_offset, config->time_zone, config);
+            tryGetTime();
 
             // exit task immediately if time is not ready synched
             // which handleToken function should run repeatedly to enter this function again.
@@ -473,7 +502,7 @@ void GAuthManager::tokenProcessingTask()
         {
 
             // time must be set first
-            TimeHelper::syncClock(mb_ts, mb_ts_offset, config->time_zone, config);
+            tryGetTime();
             config->internal.last_jwt_begin_step_millis = millis();
 
             if (config->internal.clock_rdy)

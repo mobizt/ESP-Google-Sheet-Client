@@ -1,9 +1,9 @@
 /**
- * Google Sheet Client, GAuthManager v1.0.3
+ * Google Sheet Client, GAuthManager v1.0.4
  *
  * This library supports Espressif ESP8266, ESP32 and Raspberry Pi Pico MCUs.
  *
- * Created August 13, 2023
+ * Created August 21, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -78,6 +78,11 @@ private:
     ESP_GOOGLE_SHEET_CLIENT_NetworkStatusRequestCallback _net_stat_cb = NULL;
     Client *_cli = nullptr;
 
+#if defined(ESP_GOOGLE_SHEET_CLIENT_GSM_MODEM_IS_AVAILABLE)
+    MB_String _pin, _apn, _user, _password;
+    void *_modem = nullptr;
+#endif
+
     /* intitialize the class */
     void begin(esp_google_sheet_auth_cfg_t *cfg, MB_FS *mbfs, uint32_t *mb_ts, uint32_t *mb_ts_offset);
     void end();
@@ -117,6 +122,8 @@ private:
     bool handleTaskError(int code, int httpCode = 0);
     // parse the auth token response
     bool handleResponse(GS_TCP_Client *client, int &httpCode, MB_String &payload, bool stopSession = true);
+    /* Get time */
+    void tryGetTime();
     /* process the tokens (generation, signing, request and refresh) */
     void tokenProcessingTask();
     /* encode and sign the JWT token */

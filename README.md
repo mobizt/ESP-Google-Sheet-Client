@@ -946,11 +946,13 @@ param **`pageSize`** (integer) The maximum number of files to return per page.
 
 param **`orderBy`** (string) A comma-separated list of sort keys. 
 
-Note: Valid keys are 'createdTime', 'folder', 'modifiedByMeTime', 'modifiedTime', 'name', 'name_natural', 'quotaBytesUsed', 'recency', 'sharedWithMeTime', 'starred', and 'viewedByMeTime'. 
+Note: Valid keys are `createdTime`, `folder`, `modifiedByMeTime`, `modifiedTime`, `name`, `name_natural`, `quotaBytesUsed`, `recency`, `sharedWithMeTime`, `starred`, and `viewedByMeTime`. 
 
-Each key sorts ascending by default, but may be reversed with the 'desc' modifier. 
+Each key sorts ascending by default, but may be reversed with the `desc` modifier. 
 
-Example usage: ?orderBy=folder,modifiedTime desc,name. 
+Example usage: `folder,modifiedTime%20desc,name` which the white space need to be replaceed with `%20` as this parameter is used as the URI parameter of Google Drive API request endpoint.
+
+Please consult [Google Drive API doc](https://developers.google.com/drive/api/reference/rest/v3/files/list) for the more detail. 
 
 param **`pageToken`** (string) The token for continuing a previous list request on the next page. 
 

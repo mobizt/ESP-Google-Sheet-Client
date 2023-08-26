@@ -525,6 +525,8 @@ param **`networkConnectionCB`** The function that handles the network connection
 
 param **`networkStatusCB`** The function that handle the network connection status acknowledgement.
 
+Due to the client pointer is assigned, to avoid dangling pointer, client should be existed as long as it was used for transportation.
+
 ```cpp
 void setExternalClient(Client *client, GS_NetworkConnectionRequestCallback networkConnectionCB,
                            GS_NetworkStatusRequestCallback networkStatusCB);
@@ -544,6 +546,8 @@ param **`apn`** The GPRS APN (Access Point Name).
 param **`user`** The GPRS user.
 
 param **`password`** The GPRS password.
+
+Due to the client and modem pointers are assigned, to avoid dangling pointer, client should be existed as long as it was used for transportation.
 
 ```cpp
 void setGSMClient(Client *client, void *modem, const char *pin, const char *apn, const char *user, const char *password);

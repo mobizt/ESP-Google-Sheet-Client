@@ -151,6 +151,8 @@ void setupGsheet()
     GSheet.setTokenCallback(tokenStatusCallback);
 
     /* Assign the pointer to global defined external SSL Client object and required callback functions */
+    // Due to the client (eth) pointer is assigned, to avoid dangling pointer, 
+    // client should be existed as long as it was used for transportation.
     GSheet.setExternalClient(&eth, networkConnection, networkStatusRequestCallback);
 
     // Set the seconds to refresh the auth token before expire (60 to 3540, default is 300 seconds)

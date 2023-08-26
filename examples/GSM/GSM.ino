@@ -145,7 +145,9 @@ void setup()
     DBG("Modem Info:", modemInfo);
 
     GSheet.printf("ESP Google Sheet Client v%s\n\n", ESP_GOOGLE_SHEET_CLIENT_VERSION);
-
+    
+    // Due to the gsm_client and modem pointers are assigned, to avoid dangling pointer, 
+    // gsm_client and modem should be existed as long as it was used for transportation.
     GSheet.setGSMClient(&gsm_client, &modem, GSM_PIN, apn, gprsUser, gprsPass);
 }
 

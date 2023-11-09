@@ -163,7 +163,7 @@ struct  esp_google_sheet_wifi_credential_t
 };
 class  esp_google_sheet_wifi
 {
-    friend class ESP_GOOGLE_SHEET_CLIENT_TCP_Client;
+    friend class GS_TCP_Client;
 
 public:
      esp_google_sheet_wifi(){};

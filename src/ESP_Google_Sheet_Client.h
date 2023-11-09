@@ -1,13 +1,13 @@
 #ifndef ESP_GOOGLE_SHEET_CLIENT_VERSION
-#define ESP_GOOGLE_SHEET_CLIENT_VERSION "1.4.1"
+#define ESP_GOOGLE_SHEET_CLIENT_VERSION "1.4.2"
 #endif
 
 /**
- * Google Sheet Client, ESP_Google_Sheet_Client.h v1.4.1
+ * Google Sheet Client, ESP_Google_Sheet_Client.h v1.4.2
  *
  * This library supports Espressif ESP8266 and ESP32 MCUs
  *
- * Created August 21, 2023
+ * Created November 9, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2023 K. Suwatchai (Mobizt)

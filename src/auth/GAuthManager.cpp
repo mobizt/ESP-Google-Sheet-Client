@@ -1,9 +1,9 @@
 /**
- * Google Sheet Client, GAuthManager v1.0.4
+ * Google Sheet Client, GAuthManager v1.0.5
  *
  * This library supports Espressif ESP8266, ESP32 and Raspberry Pi Pico MCUs.
  *
- * Created August 21, 2023
+ * Created November 10, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -989,6 +989,10 @@ bool GAuthManager::initClient(PGM_P subDomain, gauth_auth_token_status status)
 
     Utils::idle();
     tcpClient->begin(host.c_str(), 443, &response_code);
+
+    time_t now = getTime();
+
+    tcpClient->setX509Time(now);
 
     return true;
 }

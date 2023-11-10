@@ -116,6 +116,16 @@ public:
 #endif
   }
 
+  void setX509Time(time_t now)
+  {
+    if (_tcp_client)
+    {
+      _tcp_client->setX509Time(now);
+      if (now > ESP_SSLCLIENT_VALID_TIMESTAMP)
+        _clock_ready = true;
+    }
+  }
+
   /**
    * Set Root CA certificate to verify.
    * @param caCert The certificate.
@@ -933,7 +943,7 @@ public:
     {
       if (gsmModem->getNetworkTime(&year3, &month3, &day3, &hour3, &min3, &sec3, &timezone))
       {
-        //We have to subtract the local GSM network timezone to get GMT time
+        // We have to subtract the local GSM network timezone to get GMT time
         return TimeHelper::getTimestamp(year3, month3, day3, hour3, min3, sec3) - timezone * 3600;
       }
     }

@@ -1,9 +1,9 @@
 /**
- * Google Sheet Client, GAuthManager v1.0.4
+ * Google Sheet Client, GAuthManager v1.0.5
  *
  * This library supports Espressif ESP8266, ESP32 and Raspberry Pi Pico MCUs.
  *
- * Created August 21, 2023
+ * Created November 10, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)

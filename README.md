@@ -460,6 +460,18 @@ To use PSRAM for internal memory allocation which you can config to use it via [
 #define ESP_GOOGLE_SHEET_CLIENT_USE_PSRAM
 ```
 
+### Usage with TinyGSM
+By default the library assumes a working native WiFi or Ethernet connection. When using TinyGSM as an external client, you most likely do not want to use the Wifi/Ethernet (i.e. to get the current time). You will have to disable this in [**ESP_Google_Sheet_Client_FS_Config.h**](src/ESP_Google_Sheet_Client_FS_Config.h) by uncommenting the following lines like this:
+```cpp
+/* If not use on-board WiFi */
+#define ESP_GOOGLE_SHEET_CLIENT_DISABLE_ONBOARD_WIFI
+
+/* If not use native Ethernet (Ethernet interfaces that supported by SDK) */
+#define ESP_GOOGLE_SHEET_CLIENT_DISABLE_NATIVE_ETHERNET
+```
+Also, check out the [GSM Example](examples/GSM/GSM.ino) for more information.
+
+
 ## Functions Description
 
 ### Global Functions

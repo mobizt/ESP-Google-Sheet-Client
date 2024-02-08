@@ -68,7 +68,7 @@ void GSheetClass::auth(const char *client_email, const char *project_id, const c
 #endif
     }
 
-#if defined(ESP32) || defined(ESP8266)
+#if defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE)
     config.internal.reconnect_wifi = WiFi.getAutoReconnect();
 #endif
     config.signer.tokens.token_type = token_type_oauth2_access_token;

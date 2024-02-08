@@ -411,7 +411,7 @@ private:
 
     int tcpPeek()
     {
-        if (!_rxBuff || _fillPos == _fillSize && !fillRxBuffer())
+        if (!_rxBuff || (_fillPos == _fillSize && !fillRxBuffer()))
         {
             return -1;
         }
@@ -465,12 +465,13 @@ private:
                 }
                 else if (res < 0)
                 {
-                    log_e("fail on fd %d, errno: %d, \"%s\"", _socket, errno, strerror(errno));
+                    // log_e("fail on fd %d, errno: %d, \"%s\"", _socket, errno, strerror(errno));
                     if (errno != EAGAIN)
                     {
                         // if resource was busy, can try again, otherwise give up
                         res = 0;
                         retry = 0;
+                        tcpClose();
                     }
                 }
                 else

@@ -77,10 +77,10 @@
 // For ESP8266 W5500 Ethernet module
 // #define ENABLE_ESP8266_W5500_ETH
 
-// To use your custom config, create Custom_ESP_GOOGLE_SHEET_CLIENT_FS_Config.h in the same folder of this 
+// To use your custom config, create Custom_ESP_Google_Sheet_Client_FS_Config.h in the same folder of this 
 // ESP_Google_Sheet_Client_FS_Config.h file
-#if __has_include("Custom_ESP_GOOGLE_SHEET_CLIENT_FS_Config.h")
-#include "Custom_ESP_GOOGLE_SHEET_CLIENT_FS_Config.h"
+#if __has_include("Custom_ESP_Google_Sheet_Client_FS_Config.h")
+#include "Custom_ESP_Google_Sheet_Client_FS_Config.h"
 #endif
 
 #endif

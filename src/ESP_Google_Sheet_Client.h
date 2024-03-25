@@ -1,5 +1,5 @@
 #ifndef ESP_GOOGLE_SHEET_CLIENT_VERSION
-#define ESP_GOOGLE_SHEET_CLIENT_VERSION "1.4.3"
+#define ESP_GOOGLE_SHEET_CLIENT_VERSION "1.4.4"
 #endif
 
 /**
@@ -7,7 +7,7 @@
  *
  * This library supports Espressif ESP8266 and ESP32 MCUs
  *
- * Created November 10, 2023
+ * Created March 25, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2023 K. Suwatchai (Mobizt)

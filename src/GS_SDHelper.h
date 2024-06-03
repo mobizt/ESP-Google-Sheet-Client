@@ -32,7 +32,7 @@ SdSpiConfig sdFatSPIConfig(SPI_CS_PIN, DEDICATED_SPI, SD_SCK_MHZ(SPI_CLOCK_IN_MH
 
 #elif defined(ESP32) // if ESP32 and no SdFat library installed
 
-SPIClass spi;
+extern SPIClass spi;
 
 #elif defined(ESP8266)
 
@@ -52,7 +52,7 @@ SDFSConfig sdFSConfig(SPI_CS_PIN, SPI_HALF_SPEED, SPI1);
 
 #endif
 
-bool SD_Card_Mounting()
+inline bool SD_Card_Mounting()
 {
 
 #if defined(DEFAULT_SD_FS) && defined(CARD_TYPE_SD)

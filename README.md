@@ -7,7 +7,7 @@ Arduino Google Sheet Client Library for Arduino devices.
 This library works with Google Sheet APIs directly using the Service Account which is safe and reliable as it does not require Google AppScrips and other dirty HTTP hacks to work.
  
 
-Devices will be able to read, update, append and clear sheet values. Create, read, list, and delete the spreadsheet are also supported.
+Devices will be able to read, update, append and clear sheet values. Creating, reading, listing, and deleting the spreadsheet is also supported.
 
 
 The spreadsheet that created using this library, owned by the Service Account and shared access to the user.
@@ -29,7 +29,7 @@ This library required the Arduino platforms SDK (for ESP32, ESP8266, Pico, SAMD 
 
 To install device SDK, in Arduino IDE, the platform SDK can be installed through **Boards Manager**. 
 
-In PlatfoemIO IDE, the platform SDK can be installed through **PIO Home** > **Platforms** > **Espressif 8266 or Espressif 32**.
+In PlatformIO IDE, the platform SDK can be installed through **PIO Home** > **Platforms** > **Espressif 8266 or Espressif 32**.
 
 
 ### RP2040 Arduino SDK installation
@@ -55,7 +55,7 @@ See this Arduino-Pico SDK [documentation](https://arduino-pico.readthedocs.io/en
 
 ## Prerequisites
 
-This library used the Service Account crendentials to create the short lived access token for Google API authentication, which will be expired in 1 hour and will be refresh automatically.
+This library uses the Service Account credentials to create the short-lived access token for Google API authentication, which will expire in 1 hour and will be refreshed automatically.
 
 You need to create the Service Account private key and enable Google Sheet and Google Drive APIs for your project.
 
@@ -92,21 +92,21 @@ Go to [Google Cloud Console](https://console.cloud.google.com/projectselector2/i
 
 5. Service account ID and
 
-6. Click at CREATE AND CONTINUE
+6. Click on CREATE AND CONTINUE
 
 ![Create SA2](/media/images/GC_Create_SA2.png)
 
 7. Select Role.
 
-8. Click at CONTINUE.
+8. Click on CONTINUE.
 
 ![Create SA3](/media/images/GC_Create_SA3.png)
 
-9. Click at DONE.
+9. Click on DONE.
 
 ![Create SA4](/media/images/GC_Create_SA4.png)
 
-10. Choose service account that recently created from the list.
+10. Choose a service account that was recently created from the list.
 
 ![Create SA5](/media/images/GC_Create_SA5.png)
 
@@ -118,19 +118,19 @@ Go to [Google Cloud Console](https://console.cloud.google.com/projectselector2/i
 
 ![Create SA7](/media/images/GC_Create_SA7.png)
 
-13. Choose JSON for Key type and click CREATE. 
+13. Choose JSON for the Key type and click CREATE. 
 
 
 ![Create SA8](/media/images/GC_Create_SA8.png)
 
-14. Private key will be created for this service account and downloaded to your computer, click CLOSE. 
+14. A private key will be created for this service account and downloaded to your computer, click CLOSE. 
 
 
 ![Create SA9](/media/images/GC_Create_SA9.png)
 
 In the following stepts (15-16) for saving the Service Account Credential in flash memory at compile time.
 
-If you want to allow library to read the Service Account JSON key file directly at run time, skip these steps.
+If you want to allow the library to read the Service Account JSON key file directly at run time, skip these steps.
 
 15. Open the .json file that is already downloaded with text editor.
 
@@ -185,7 +185,7 @@ Or at **PIO Home** -> **Library** -> **Registry** then search **ESP Google Sheet
 
 ### Manual installation
 
-For Arduino IDE, download zip file from the repository (Github page) by select **Clone or download** dropdown at the top of repository, select **Download ZIP** 
+For Arduino IDE, download the zip file from the repository (Github page) by select **Clone or download** dropdown at the top of repository, select **Download ZIP** 
 
 From Arduino IDE, select menu **Sketch** -> **Include Library** -> **Add .ZIP Library...**.
 

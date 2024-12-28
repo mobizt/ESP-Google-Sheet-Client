@@ -799,6 +799,20 @@ public:
     return connect();
   }
 
+#if defined(ESP32_ARDUINO_CORE_CLIENT_CONNECT_HAS_TMO)
+  int connect(IPAddress ip, uint16_t port, int32_t timeout)
+  {
+    _tcp_client->setTimeout(timeout);
+    return connect(ip, port);
+  }
+
+  int connect(const char *host, uint16_t port, int32_t timeout)
+  {
+    _tcp_client->setTimeout(timeout);
+    return connect(host, port);
+  }
+#endif
+
   void setConfig(esp_google_sheet_auth_cfg_t *config, MB_FS *mbfs)
   {
     _config = config;
@@ -821,7 +835,7 @@ public:
     return 0;
   }
 
-  void disconnect(){};
+  void disconnect() {};
 
   void keepAlive(int tcpKeepIdleSeconds, int tcpKeepIntervalSeconds, int tcpKeepCount)
   {

@@ -1,7 +1,7 @@
 # Arduino Google Sheet Client Library for Arduino devices
 
 
-Arduino Google Sheet Client Library for Arduino devices.
+Arduino Google Sheet Client Library for Arduino Devices.
 
 
 This library works with Google Sheet APIs directly using the Service Account which is safe and reliable as it does not require Google AppScrips and other dirty HTTP hacks to work.
@@ -10,16 +10,16 @@ This library works with Google Sheet APIs directly using the Service Account whi
 Devices will be able to read, update, append and clear sheet values. Creating, reading, listing, and deleting the spreadsheet is also supported.
 
 
-The spreadsheet that created using this library, owned by the Service Account and shared access to the user.
+The spreadsheet created using this library is owned by the Service Account and shared access to the user.
 
 
-You can create, edit and deploy the Apps Script code via extension of spreadsheet that created by this library except for run the script due to permission denied.
+You can create, edit and deploy the Apps Script code via the extension of the spreadsheet created by this library except for running the script due to permission denied.
 
 
-Spreadsheet created or owned by you, needed to share the access with Service Account's client email then library can read, and edit except for delete the user's spreadsheet due to permission denied.
+Spreadsheet created or owned by you needed to share the access with the Service Account's client email then, the library can read and edit except for deleting the user's spreadsheet due to permission denied.
 
 
-Note: There is the way of hacking to post the data to Google Forms’s linked spreadsheet but it is inefficient and may not work when the form data model changed. 
+Note: There is a way of hacking to post the data to Google Forms’s linked spreadsheet but it is inefficient and may not work when the form data model changes. 
 
 
 ## Dependencies
@@ -34,7 +34,7 @@ In PlatformIO IDE, the platform SDK can be installed through **PIO Home** > **Pl
 
 ### RP2040 Arduino SDK installation
 
-For Arduino IDE, the Arduino-Pico SDK can be installed from Boards Manager by searching pico and choose Raspberry Pi Pico/RP2040 to install.
+For Arduino IDE, the Arduino-Pico SDK can be installed from Boards Manager by searching Pico and choosing Raspberry Pi Pico/RP2040 to install.
 
 For PlatformIO, the Arduino-Pico SDK can be installed via platformio.ini
 
@@ -68,9 +68,9 @@ To enable Google Drive API for your project, go to https://console.cloud.google.
 ![Create SA](/media/images/API_Enable2.png)
 
 
-In case the spreadsheet that works with this library was created or owned by you, you need to share that spreadsheet to the Service Account client email.
+In case the spreadsheet that works with this library was created or owned by you, you need to share that spreadsheet with the Service Account client email.
 
-If the spreadsheet created by this library, it will set the share access to your account automatically, you will get the notification email of the file sharing.
+If the spreadsheet is created by this library, it will set the share access to your account automatically, you will get the notification email of the file sharing.
 
 
 ## How to Create Service Account Private Key
@@ -78,7 +78,7 @@ If the spreadsheet created by this library, it will set the share access to your
 
 Go to [Google Cloud Console](https://console.cloud.google.com/projectselector2/iam-admin/settings).
 
-1. Choose or create project to create Service Account.
+1. Choose or create a project to create a Service Account.
 
 2. Choose Service Accounts
 
@@ -128,11 +128,11 @@ Go to [Google Cloud Console](https://console.cloud.google.com/projectselector2/i
 
 ![Create SA9](/media/images/GC_Create_SA9.png)
 
-In the following stepts (15-16) for saving the Service Account Credential in flash memory at compile time.
+In the following steps (15-16) for saving the Service Account Credential in flash memory at compile time.
 
 If you want to allow the library to read the Service Account JSON key file directly at run time, skip these steps.
 
-15. Open the .json file that is already downloaded with text editor.
+15. Open the .json file that is already downloaded with the text editor.
 
 ```json
 {
@@ -149,7 +149,7 @@ If you want to allow the library to read the Service Account JSON key file direc
 }
 
 ```
-16. Copy project_id, client_email, private_key_id and private_key from .json file and paste to these defines in the example.
+16. Copy project_id, client_email, private_key_id and private_key from the .json file and paste them to these ```defines``` in the example.
 
 ```cpp
 #define PROJECT_ID "..." //Taken from "project_id" key in JSON file.
@@ -169,13 +169,13 @@ const char PRIVATE_KEY[] PROGMEM = "-----BEGIN PRIVATE KEY-----\n...\n-----END P
 
 At Arduino IDE, go to menu **Sketch** -> **Include Library** -> **Manage Libraries...**
 
-In Library Manager Window, search **"sheet"** in the search form then select **"ESP Google Spreadsheet Client"**. 
+In the Library Manager Window, search **"sheet"** in the search form then select **"ESP Google Spreadsheet Client"**. 
 
 Click **"Install"** button.
 
 
 
-For PlatformIO IDE, using the following command.
+For PlatformIO IDE, use the following command.
 
 **pio lib install "ESP Google Sheet Client""**
 
@@ -185,13 +185,13 @@ Or at **PIO Home** -> **Library** -> **Registry** then search **ESP Google Sheet
 
 ### Manual installation
 
-For Arduino IDE, download the zip file from the repository (Github page) by select **Clone or download** dropdown at the top of repository, select **Download ZIP** 
+For Arduino IDE, download the zip file from the repository (Github page) by selecting **Clone or download** dropdown at the top of the repository, and select **Download ZIP** 
 
 From Arduino IDE, select menu **Sketch** -> **Include Library** -> **Add .ZIP Library...**.
 
-Choose **ESP-Google-Sheet-Client-master.zip** that previously downloaded.
+Choose **ESP-Google-Sheet-Client-master.zip** that was previously downloaded.
 
-Go to menu **Files** -> **Examples** -> **ESP-Google-Sheet-Client-master** and choose one from examples.
+Go to the menu **Files** -> **Examples** -> **ESP-Google-Sheet-Client-master** and choose one from the examples.
 
 
 
@@ -306,7 +306,7 @@ void loop()
 
         FirebaseJson response;
         // Instead of using FirebaseJson for response, you can use String for response to the functions 
-        // especially in low memory device that deserializing large JSON response may be failed as in ESP8266
+        // especially in low memory devices that deserializing large JSON responses may be failed as in ESP8266
 
         Serial.println("Get spreadsheet values from range...");
         Serial.println("---------------------------------------------------------------");
@@ -324,23 +324,23 @@ void loop()
 
 
 
-## IDE Configuaration for ESP8266 MMU - Adjust the Ratio of ICACHE to IRAM
+## IDE Configuration for ESP8266 MMU - Adjust the Ratio of ICACHE to IRAM
 
 ### Arduino IDE
 
 When you update the ESP8266 Arduino Core SDK to v3.0.0, the memory can be configurable from Arduino IDE board settings.
 
-By default MMU **option 1** was selected, the free Heap can be low and may not suitable for the SSL client usage in this library.
+By default MMU **option 1** was selected, the free Heap can be low and may not be suitable for the SSL client usage in this library.
 
 To increase the Heap, choose the MMU **option 3**, 16KB cache + 48KB IRAM and 2nd Heap (shared).
 
 ![Arduino IDE config](/media/images/ArduinoIDE.png)
 
-To use external Heap from 1 Mbit SRAM 23LC1024, choose the MMU **option 5**, 128K External 23LC1024.
+To use an external Heap from 1 Mbit SRAM 23LC1024, choose the MMU **option 5**, 128K External 23LC1024.
 
 ![MMU VM 128K](/media/images/ESP8266_VM.png)
 
-To use external Heap from PSRAM, choose the MMU **option 6**, 1M External 64 MBit PSRAM.
+To use an external Heap from PSRAM, choose the MMU **option 6**, 1M External 64 MBit PSRAM.
 
 The connection between SRAM/PSRAM and ESP8266
 
@@ -359,7 +359,7 @@ Vcc (Pin 4)                         GND
 
 ### PlatformIO IDE
 
-By default the balanced ratio (32KB cache + 32KB IRAM) configuration is used.
+By default, the balanced ratio (32KB cache + 32KB IRAM) configuration is used.
 
 To increase the heap, **PIO_FRAMEWORK_ARDUINO_MMU_CACHE16_IRAM48_SECHEAP_SHARED** build flag should be assigned in platformio.ini.
 
@@ -374,7 +374,7 @@ monitor_speed = 115200
 
 And to use external Heap from 1 Mbit SRAM 23LC1024 and 64 Mbit PSRAM, **PIO_FRAMEWORK_ARDUINO_MMU_EXTERNAL_128K** and **PIO_FRAMEWORK_ARDUINO_MMU_EXTERNAL_1024K** build flags should be assigned respectively.
 
-The supportedd MMU build flags in PlatformIO.
+The supported MMU build flags in PlatformIO.
 
 - **PIO_FRAMEWORK_ARDUINO_MMU_CACHE16_IRAM48**
 
@@ -401,7 +401,7 @@ The supportedd MMU build flags in PlatformIO.
    Disables default configuration and expects user-specified flags
 
 
-To use PSRAM/SRAM for internal memory allocation which you can config to use it via [**ESP_Google_Sheet_Client_FS_Config.h**](src/ESP_Google_Sheet_Client_FS_Config.h) with this macro.
+To use PSRAM/SRAM for internal memory allocation you can config to use it via [**ESP_Google_Sheet_Client_FS_Config.h**](src/ESP_Google_Sheet_Client_FS_Config.h) with this macro.
 
 ```cpp
 #define ESP_GOOGLE_SHEET_CLIENT_USE_PSRAM
@@ -451,22 +451,22 @@ In PlatformIO in VSCode IDE, add the following build_flags in your project's pla
 build_flags = -DBOARD_HAS_PSRAM -mfix-esp32-psram-cache-issue
 ```
 
-*When config the IDE or add the build flags to use PSRAM in the ESP32 dev boards that do not have on-board PSRAM chip, your device will be crashed (reset).
+*When configuring the IDE or adding the build flags to use PSRAM in the ESP32 dev boards that do not have an on-board PSRAM chip, your device will crash (reset).
 
 
-To use PSRAM for internal memory allocation which you can config to use it via [**ESP_Google_Sheet_Client_FS_Config.h**](src/ESP_Google_Sheet_Client_FS_Config.h) with this macro.
+To use PSRAM for internal memory allocation you can config to use it via [**ESP_Google_Sheet_Client_FS_Config.h**](src/ESP_Google_Sheet_Client_FS_Config.h) with this macro.
 
 ```cpp
 #define ESP_GOOGLE_SHEET_CLIENT_USE_PSRAM
 ```
 
 ### Usage with TinyGSM
-By default the library assumes a working native WiFi or Ethernet connection. When using TinyGSM as an external client, you most likely do not want to use the Wifi/Ethernet (i.e. to get the current time). You will have to disable this in [**ESP_Google_Sheet_Client_FS_Config.h**](src/ESP_Google_Sheet_Client_FS_Config.h) by uncommenting the following lines like this:
+By default, the library assumes a working native WiFi or Ethernet connection. When using TinyGSM as an external client, you most likely do not want to use the Wifi/Ethernet (i.e. to get the current time). You will have to disable this in [**ESP_Google_Sheet_Client_FS_Config.h**](src/ESP_Google_Sheet_Client_FS_Config.h) by uncommenting the following lines like this:
 ```cpp
-/* If not use on-board WiFi */
+/* If not use onboard WiFi */
 #define ESP_GOOGLE_SHEET_CLIENT_DISABLE_ONBOARD_WIFI
 
-/* If not use native Ethernet (Ethernet interfaces that supported by SDK) */
+/* If not use native Ethernet (Ethernet interfaces that are supported by SDK) */
 #define ESP_GOOGLE_SHEET_CLIENT_DISABLE_NATIVE_ETHERNET
 ```
 Also, check out the [GSM Example](examples/GSM/GSM.ino) for more information.
@@ -508,7 +508,7 @@ void begin(<string> service_account_file, esp_google_sheet_file_storage_type sto
 
 #### Set the OAuth2.0 token generation status callback. 
 
-param **`callback`** The callback function that accepts the TokenInfo as argument.
+param **`callback`** The callback function that accepts the TokenInfo as an argument.
  
 ```cpp
 void setTokenCallback(TokenStatusCallback callback);
@@ -529,15 +529,15 @@ void addAP(T1 ssid, T2 password);
 void clearAP();
 ```
 
-#### Assign external Arduino Client and required callback fumctions.
+#### Assign external Arduino Client and required callback functions.
 
 param **`client`** The pointer to Arduino Client derived class of SSL Client.
 
 param **`networkConnectionCB`** The function that handles the network connection.
 
-param **`networkStatusCB`** The function that handle the network connection status acknowledgement.
+param **`networkStatusCB`** The function that handles the network connection status acknowledgement.
 
-Due to the client pointer is assigned, to avoid dangling pointer, client should be existed as long as it was used for transportation.
+Due to the client pointer is assigned, to avoid dangling pointer, a client should exist as long as it was used for transportation.
 
 ```cpp
 void setExternalClient(Client *client, GS_NetworkConnectionRequestCallback networkConnectionCB,
@@ -549,7 +549,7 @@ void setExternalClient(Client *client, GS_NetworkConnectionRequestCallback netwo
 
 param **`client`** The pointer to TinyGsmClient.
 
-param **`modem`** The pointer to TinyGsm modem object. Modem should be initialized and/or set mode before transfering data.
+param **`modem`** The pointer to TinyGsm modem object. The modem should be initialized and/or set mode before transferring data.
 
 param **`pin`** The SIM pin.
 
@@ -559,7 +559,7 @@ param **`user`** The GPRS user.
 
 param **`password`** The GPRS password.
 
-Due to the client and modem pointers are assigned, to avoid dangling pointer, client should be existed as long as it was used for transportation.
+Due to the client and modem pointers being assigned, to avoid dangling pointer, a client should exist as long as it is used for transportation.
 
 ```cpp
 void setGSMClient(Client *client, void *modem, const char *pin, const char *apn, const char *user, const char *password);
@@ -576,11 +576,11 @@ void setNetworkStatus(bool status);
 ```
 
 
-####  Set the seconds to refesh auth token before it expires.
+####  Set the seconds to refresh auth token before it expires.
 
 param **`seconds`** The seconds (60 sec to 3540 sec) that auth token will refresh before expired.
 
-Default value is 300 seconds.
+The default value is 300 seconds.
 
 ```cpp
 void setPrerefreshSeconds(uint16_t seconds);
@@ -601,7 +601,7 @@ void setCert(const char *ca);
 
 param **`filename`** PEM format certificate file name included path.
 
-param **`storageType`** The storage type of certificate file. esp_google_sheet_file_storage_type_flash or esp_google_sheet_file_storage_type_sd
+param **`storageType`** The storage type of the certificate file. esp_google_sheet_file_storage_type_flash or esp_google_sheet_file_storage_type_sd
 
 ```cpp
 void setCertFile(<string> filename, esp_google_sheet_file_storage_type storageType);
@@ -685,11 +685,11 @@ uint64_t getCurrentTimestamp();
 
 
 
-#### Set system time with timestamp.
+#### Set system time with a timestamp.
 
 param  **`ts`** timestamp in seconds from midnight Jan 1, 1970.
 
-retuen **`Boolean`** type status indicates the success of the operation.
+return **`Boolean`** type status indicates the success of the operation.
 
 ```cpp
 bool setSystemTime(time_t ts);
@@ -721,7 +721,7 @@ param **`mosi`** The SPI MOSI pin.
 
 aram **`frequency`** The SPI frequency.
 
-return **`boolean`** The boolean value indicates the success of operation.
+return **`boolean`** The boolean value indicates the success of the operation.
 
 ```cpp
 bool sdBegin(int8_t ss = -1, int8_t sck = -1, int8_t miso = -1, int8_t mosi = -1, uint32_t frequency = 4000000);
@@ -745,11 +745,11 @@ return **`boolean`** type status indicates the success of the operation.
 
 param **`ss`** The SPI Chip/Slave Select pin.
 
-param **`spiConfig`** The pointer to SPIClass object for SPI configuartion.
+param **`spiConfig`** The pointer to SPIClass object for SPI configuration.
 
 param **`frequency`** The SPI frequency.
 
-return **`boolean`** The boolean value indicates the success of operation.
+return **`boolean`** The boolean value indicates the success of the operation.
 
 ```cpp
 bool sdBegin(int8_t ss, SPIClass *spiConfig = nullptr, uint32_t frequency = 4000000);
@@ -768,7 +768,7 @@ param **`miso`** The SPI MISO pin.
 
 param **`mosi`** The SPI MOSI pin.
 
-return **`boolean`** The boolean value indicates the success of operation.
+return **`boolean`** The boolean value indicates the success of the operation.
 
 ```cpp
  bool sdBegin(SdSpiConfig *sdFatSPIConfig, int8_t ss = -1, int8_t sck = -1, int8_t miso = -1, int8_t mosi = -1);
@@ -779,7 +779,7 @@ return **`boolean`** The boolean value indicates the success of operation.
 
 param **`sdFatSDIOConfig`** The pointer to SdioConfig object for SdFat SDIO configuration.
 
-return **`boolean`** The boolean value indicates the success of operation.
+return **`boolean`** The boolean value indicates the success of the operation.
 
 ```cpp
  bool sdBegin(SdioConfig *sdFatSDIOConfig);
@@ -790,7 +790,7 @@ return **`boolean`** The boolean value indicates the success of operation.
 
 param **`mountpoint`** The mounting point.
 
-param **`mode1bit`** Allow 1 bit data line (SPI mode).
+param **`mode1bit`** Allow 1-bit data line (SPI mode).
 
 param **`format_if_mount_failed`** Format SD_MMC card if mount failed.
 
@@ -821,7 +821,7 @@ param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheetId`** (string) The spreadsheet to apply the updates to.
 
-param **`requestsArray`** (FirebaseJsonArray of Request oobject) A list of updates to apply to the spreadsheet. 
+param **`requestsArray`** (FirebaseJsonArray of Request object) A list of updates to apply to the spreadsheet. 
 
 Note: Requests will be applied in the order they are specified. If any request is not valid, no requests will be applied.
 
@@ -829,7 +829,7 @@ param **`includeSpreadsheetInResponse`** (boolean string) Determines if the upda
 
 param **`responseRanges`** (string) Limits the ranges included in the response spreadsheet. Meaningful only if includeSpreadsheetInResponse is 'true'.
 
-param **`responseIncludeGridData`** (boolean string) True if grid data should be returned. Meaningful only if includeSpreadsheetInResponse is 'true'. This parameter is ignored if a field mask was set in the request.
+param **`responseIncludeGridData`** (boolean string) True if grid data should be returned. Meaningful only if includeSpreadsheetInResponse is 'true'. This parameter is ignored if a field mask is set in the request.
 
 return **`Boolean`** type status indicates the success of the operation.
 
@@ -850,7 +850,7 @@ param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheet`** (FirebaseJson) The spreadsheet object.
 
-param **`sharedUserEmail`** (string) Email of user to share the access. 
+param **`sharedUserEmail`** (string) Email of the user to share the access. 
 
 Note Google Drive API should be enabled at, https://console.cloud.google.com/apis/library/drive.googleapis.com
 
@@ -917,7 +917,7 @@ bool getByDataFilter(String *response, <string> spreadsheetId, FirebaseJsonArray
 
 param **`response`** (FirebaseJson or String) The returned response.
 
-param **`spreadsheetId`** (FirebaseJson) The ID of spreadsheet to delete. 
+param **`spreadsheetId`** (FirebaseJson) The ID of the spreadsheet to delete. 
 
 param **`closeSession`** (boolean) Close the session after delete. 
 
@@ -939,7 +939,7 @@ bool deleteFile(String *response, <string> spreadsheetId, bool closeSession = tr
 
 param **`response`** (FirebaseJson or String) The returned response.
 
-Note This will delete last 5 spreadsheets at a time.
+Note This will delete the last 5 spreadsheets at a time.
 
 return **`Boolean`** type status indicates the success of the operation.
 
@@ -966,9 +966,9 @@ Note: Valid keys are `createdTime`, `folder`, `modifiedByMeTime`, `modifiedTime`
 
 Each key sorts ascending by default, but may be reversed with the `desc` modifier. 
 
-Example usage: `folder,modifiedTime%20desc,name` which the white space need to be replaceed with `%20` as this parameter is used as the URI parameter of Google Drive API request endpoint.
+Example usage: `folder,modifiedTime%20desc,name` which the white space needs to be replaced with `%20` as this parameter is used as the URI parameter of the Google Drive API request endpoint.
 
-Please consult [Google Drive API doc](https://developers.google.com/drive/api/reference/rest/v3/files/list) for the more detail. 
+Please consult [Google Drive API doc](https://developers.google.com/drive/api/reference/rest/v3/files/list) for more details. 
 
 param **`pageToken`** (string) The token for continuing a previous list request on the next page. 
 
@@ -1051,13 +1051,13 @@ Note: This is ignored if valueRenderOption is FORMATTED_VALUE.
 The default dateTime render option is SERIAL_NUMBER.
 **SERIAL_NUMBER** Instructs date, time, datetime, and duration fields to be output as doubles in "serial number" format, as popularized by Lotus 1-2-3. 
 
-The whole number portion of the value (left of the decimal) counts the days since December 30th 1899. 
+The whole number portion of the value (left of the decimal) counts the days since December 30th, 1899. 
 
 The fractional portion (right of the decimal) counts the time as a fraction of the day. 
 
-For example, January 1st 1900 at noon would be 2.5, 2 because it's 2 days after December 30st 1899, and .5 because noon is half a day. 
+For example, January 1st, 1900 at noon would be 2.5, 2 because it's 2 days after December 30th 1899, and .5 because noon is half a day. 
 
-February 1st 1900 at 3pm would be 33.625. This correctly treats the year 1900 as not a leap year.
+February 1st, 1900 at 3 pm would be 33.625. This correctly treats the year 1900 as not a leap year.
 
 **FORMATTED_STRING** Instructs date, time, datetime, and duration fields to be output as strings in their given number format (which is dependent on the spreadsheet locale).
 
@@ -1080,7 +1080,7 @@ param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheetId`** (string) The ID of the spreadsheet to retrieve data from.
 
-param **`dataFiltersArray`** (FirebaseJsonArray of DataFilter object) The data filters used to match the ranges of values to retrieve. Ranges that match any of the specified data filters are included in the response.
+param **`dataFiltersArray`** (FirebaseJsonArray of DataFilter object) The data filters are used to match the ranges of values to retrieve. Ranges that match any of the specified data filters are included in the response.
 
 param **`majorDimension`** (enum string) The major dimension that results should use.
 
@@ -1116,19 +1116,19 @@ The default dateTime render option is SERIAL_NUMBER.
 
 **SERIAL_NUMBER** Instructs date, time, datetime, and duration fields to be output as doubles in "serial number" format, as popularized by Lotus 1-2-3. 
 
-The whole number portion of the value (left of the decimal) counts the days since December 30th 1899. 
+The whole number portion of the value (left of the decimal) counts the days since December 30th, 1899. 
 
 The fractional portion (right of the decimal) counts the time as a fraction of the day. 
 
-For example, January 1st 1900 at noon would be 2.5, 2 because it's 2 days after December 30st 1899, and .5 because noon is half a day.
+For example, January 1st, 1900 at noon would be 2.5, 2 because it's 2 days after December 30th 1899, and .5 because noon is half a day.
 
-February 1st 1900 at 3pm would be 33.625. This correctly treats the year 1900 as not a leap year.
+February 1st, 1900 at 3 pm would be 33.625. This correctly treats the year 1900 as not a leap year.
 
 **FORMATTED_STRING** Instructs date, time, datetime, and duration fields to be output as strings in their given number  format (which is dependent on the spreadsheet locale).
 
 return **`Boolean`** type status indicates the success of the operation.
 
-For ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/batchGetByDataFilter
+For the ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/batchGetByDataFilter
 
 ```cpp
 bool batchGetByDataFilter(FirebaseJson *response, <string> spreadsheetId, FirebaseJsonArray *dataFiltersArray, <string> majorDimension, <string> valueRenderOption = "", <string> dateTimeRenderOption = "");
@@ -1205,13 +1205,13 @@ The default dateTime render option is SERIAL_NUMBER.
 
 **SERIAL_NUMBER** Instructs date, time, datetime, and duration fields to be output as doubles in "serial number" format, as popularized by Lotus 1-2-3. 
 
-The whole number portion of the value (left of the decimal) counts the days since December 30th 1899. 
+The whole number portion of the value (left of the decimal) counts the days since December 30th, 1899. 
 
 The fractional portion (right of the decimal) counts the time as a fraction of the day. 
 
-For example, January 1st 1900 at noon would be 2.5, 2 because it's 2 days after December 30st 1899, and .5 because noon is half a day. 
+For example, January 1st, 1900 at noon would be 2.5, 2 because it's 2 days after December 30th, 1899, and .5 because noon is half a day. 
 
-February 1st 1900 at 3pm would be 33.625. This correctly treats the year 1900 as not a leap year.
+February 1st, 1900 at 3 pm would be 33.625. This correctly treats the year 1900 as not a leap year.
 
 **FORMATTED_STRING** Instructs date, time, datetime, and duration fields to be output as strings in their given number format (which is dependent on the spreadsheet locale).
  
@@ -1282,19 +1282,19 @@ The default dateTime render option is SERIAL_NUMBER.
 
 **SERIAL_NUMBER** Instructs date, time, datetime, and duration fields to be output as doubles in "serial number" format, as popularized by Lotus 1-2-3. 
 
-The whole number portion of the value (left of the decimal) counts the days since December 30th 1899. 
+The whole number portion of the value (left of the decimal) counts the days since December 30th, 1899. 
 
 The fractional portion (right of the decimal) counts the time as a fraction of the day. 
 
-For example, January 1st 1900 at noon would be 2.5, 2 because it's 2 days after December 30st 1899, and .5 because noon is half a day. 
+For example, January 1st, 1900 at noon would be 2.5, 2 because it's 2 days after December 30th, 1899, and .5 because noon is half a day. 
 
-February 1st 1900 at 3pm would be 33.625. This correctly treats the year 1900 as not a leap year.
+February 1st, 1900 at 3 pm would be 33.625. This correctly treats the year 1900 as not a leap year.
 
 **FORMATTED_STRING** Instructs date, time, datetime, and duration fields to be output as strings in their given number format (which is dependent on the spreadsheet locale).
 
 return **`Boolean`** type status indicates the success of the operation.
 
-For ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/update
+For the ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/update
 
 ```cpp
 bool update(FirebaseJson *response, <string> spreadsheetId, <string> range, FirebaseJson *valueRange, <string> valueInputOption = "USER_ENTERED", <string> includeValuesInResponse = "", <string> responseValueRenderOption = "", <string> responseDateTimeRenderOption = "");
@@ -1357,13 +1357,13 @@ The default dateTime render option is SERIAL_NUMBER.
 
 **SERIAL_NUMBER** Instructs date, time, datetime, and duration fields to be output as doubles in "serial number" format, as popularized by Lotus 1-2-3. 
 
-The whole number portion of the value (left of the decimal) counts the days since December 30th 1899. 
+The whole number portion of the value (left of the decimal) counts the days since December 30th, 1899. 
 
 The fractional portion (right of the decimal) counts the time as a fraction of the day. 
 
-For example, January 1st 1900 at noon would be 2.5, 2 because it's 2 days after December 30st 1899, and .5 because noon is half a day. 
+For example, January 1st, 1900 at noon would be 2.5, 2 because it's 2 days after December 30th, 1899, and .5 because noon is half a day. 
 
-February 1st 1900 at 3pm would be 33.625. This correctly treats the year 1900 as not a leap year.
+February 1st, 1900 at 3 pm would be 33.625. This correctly treats the year 1900 as not a leap year.
 
 **FORMATTED_STRING** Instructs date, time, datetime, and duration fields to be output as strings in their given number 
 
@@ -1432,19 +1432,19 @@ The default dateTime render option is SERIAL_NUMBER.
 
 **SERIAL_NUMBER** Instructs date, time, datetime, and duration fields to be output as doubles in "serial number" format, as popularized by Lotus 1-2-3. 
 
-The whole number portion of the value (left of the decimal) counts the days since December 30th 1899. 
+The whole number portion of the value (left of the decimal) counts the days since December 30th, 1899. 
 
 The fractional portion (right of the decimal) counts the time as a fraction of the day. 
 
-For example, January 1st 1900 at noon would be 2.5, 2 because it's 2 days after December 30st 1899, and .5 because noon is half a day. 
+For example, January 1st, 1900 at noon would be 2.5, 2 because it's 2 days after December 30th 1899, and .5 because noon is half a day. 
 
-February 1st 1900 at 3pm would be 33.625. This correctly treats the year 1900 as not a leap year.
+February 1st, 1900 at 3 pm would be 33.625. This correctly treats the year 1900 as not a leap year.
 
 **FORMATTED_STRING** Instructs date, time, datetime, and duration fields to be output as strings in their given number format (which is dependent on the spreadsheet locale).
 
 return **`Boolean`** type status indicates the success of the operation.
 
-For ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/batchUpdateByDataFilter
+For the ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/batchUpdateByDataFilter
 
 ```cpp
 bool batchUpdateByDataFilter(FirebaseJson *response, <string> spreadsheetId, FirebaseJsonArray *DataFilterValueRangeArray, <string> valueInputOption = "USER_ENTERED", <string> includeValuesInResponse = "", <string> responseValueRenderOption = "", <string> responseDateTimeRenderOption = "");
@@ -1573,13 +1573,13 @@ param **`response`** (FirebaseJson or String) The returned response.
 
 param **`spreadsheetId`** (string) The ID of the spreadsheet to retrieve metadata from. 
 
-param **`dataFiltersArray`** (FirebaseJsonArray of DataFilter object) The data filters describing the criteria used to determine which DeveloperMetadata entries to return. 
+param **`dataFiltersArray`** (FirebaseJsonArray of DataFilter object) The data filters describe the criteria used to determine which DeveloperMetadata entries to return. 
      
-DeveloperMetadata matching any of the specified filters are included in the response.
+DeveloperMetadata matching any of the specified filters is included in the response.
 
 return **`Boolean`** type status indicates the success of the operation.
 
-For ref doc go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.developerMetadata/search
+For ref, doc go to https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.developerMetadata/search
 
 ```cpp
 bool search(FirebaseJson *response, <string> spreadsheetId, FirebaseJsonArray *dataFiltersArray);

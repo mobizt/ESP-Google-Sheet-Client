@@ -1,9 +1,9 @@
 #ifndef ESP_GOOGLE_SHEET_CLIENT_VERSION
-#define ESP_GOOGLE_SHEET_CLIENT_VERSION "1.4.7"
+#define ESP_GOOGLE_SHEET_CLIENT_VERSION "1.4.8"
 #endif
 
 /**
- * Google Sheet Client, ESP_Google_Sheet_Client.h v1.4.7
+ * Google Sheet Client, ESP_Google_Sheet_Client.h v1.4.8
  *
  * This library supports Espressif ESP8266 and ESP32 MCUs
  *

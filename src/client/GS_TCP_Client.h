@@ -1,7 +1,7 @@
 
 /**
  * The MIT License (MIT)
- * Copyright (c) 2023 K. Suwatchai (Mobizt)
+ * Copyright (c) 2025 K. Suwatchai (Mobizt)
  *
  *
  * Permission is hereby granted, free of charge, to any person returning a copy of
@@ -479,6 +479,7 @@ public:
     _host = host;
     _port = port;
     _tcp_client->setBufferSizes(_rx_size, _tx_size);
+     _tcp_client->setSessionTimeout(150);
     _last_error = 0;
     this->response_code = response_code;
     return true;

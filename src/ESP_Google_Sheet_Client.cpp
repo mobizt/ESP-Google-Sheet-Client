@@ -1,9 +1,9 @@
 /**
- * Google Sheet Client, ESP_GOOGLE_SHEET_CLIENT_Google_Sheet_Client.cpp v1.4.3
+ * Google Sheet Client, ESP_GOOGLE_SHEET_CLIENT_Google_Sheet_Client.cpp v1.4.9
  *
  * This library supports Espressif ESP8266 and ESP32 MCUs
  *
- * Created November 10, 2023
+ * Created April 15, 2025
  *
  * The MIT License (MIT)
  * Copyright (c) 2023 K. Suwatchai (Mobizt)
@@ -68,7 +68,7 @@ void GSheetClass::auth(const char *client_email, const char *project_id, const c
 #endif
     }
 
-#if defined(ESP_GOOGLE_SHEET_CLIENT_WIFI_IS_AVAILABLE)
+#if defined(ESP8266) || defined(ESP32)
     config.internal.reconnect_wifi = WiFi.getAutoReconnect();
 #endif
     config.signer.tokens.token_type = token_type_oauth2_access_token;

@@ -1,19 +1,13 @@
 
 /**
- * Mobizt's SRAM/PSRAM supported String, version 1.2.12
+ * Mobizt's SRAM/PSRAM supported String, version 1.2.10
  *
- * Created March 25, 2024
+ * Created June 20, 2024
  *
  * Changes Log
  *
- * v1.2.12
- * - using std namespace
- * 
- * v1.2.11
- * - fix float to string conversion
- * 
  * v1.2.10
- * - add support Arduino UNO WiFi R4
+ * - use std namespace
  * 
  * v1.2.9
  * - substring optimization
@@ -97,7 +91,7 @@
 #define MB_STRING_MINOR 2
 #define MB_STRING_PATCH 5
 
-#if defined(ESP8266) && defined(MMU_EXTERNAL_HEAP) && defined(MB_STRING_USE_PSRAM)
+#if defined(ESP8266) && defined(MMU_EXTERNAL_HEAP)
 #include <umm_malloc/umm_malloc.h>
 #include <umm_malloc/umm_heap_select.h>
 #define ESP8266_USE_EXTERNAL_HEAP
@@ -115,7 +109,6 @@ class MB_String;
 
 #define pgm2Str(p) (MB_String().appendP(p).c_str())
 #define num2Str(v, p) (MB_String().appendNum(v, p).c_str())
-
 
 namespace mb_string
 {
@@ -902,7 +895,7 @@ public:
             s = boolStr(value);
         else if (is_num_neg_int<T>::value)
         {
-#if defined(ARDUINO_ARCH_SAMD) || defined(__AVR_ATmega4809__) || defined(ARDUINO_NANO_RP2040_CONNECT) || defined(ARDUINO_UNOWIFIR4)
+#if defined(ARDUINO_ARCH_SAMD) || defined(__AVR_ATmega4809__) || defined(ARDUINO_NANO_RP2040_CONNECT)
             s = int32Str(value);
 #else
             s = int64Str(value);
@@ -910,7 +903,7 @@ public:
         }
         else if (is_num_pos_int<T>::value)
         {
-#if defined(ARDUINO_ARCH_SAMD) || defined(__AVR_ATmega4809__) || defined(ARDUINO_NANO_RP2040_CONNECT) || defined(ARDUINO_UNOWIFIR4)
+#if defined(ARDUINO_ARCH_SAMD) || defined(__AVR_ATmega4809__) || defined(ARDUINO_NANO_RP2040_CONNECT)
             s = uint32Str(value);
 #else
             s = uint64Str(value);
@@ -1477,7 +1470,7 @@ public:
     static const size_t npos = -1;
 
 private:
-#if defined(ARDUINO_ARCH_SAMD) || defined(__AVR_ATmega4809__) || defined(ARDUINO_NANO_RP2040_CONNECT) || defined(ARDUINO_UNOWIFIR4)
+#if defined(ARDUINO_ARCH_SAMD) || defined(__AVR_ATmega4809__) || defined(ARDUINO_NANO_RP2040_CONNECT)
 
     char *int32Str(signed long value)
     {
@@ -1526,18 +1519,10 @@ private:
         {
             MB_String fmt = MBSTRING_FLASH_MCR("%.");
             fmt += precision;
-
-            if (type < 2)
-            {
-                fmt += MBSTRING_FLASH_MCR("f");
-                sprintf(t, fmt.c_str(), (double)value);
-            }
-            else
-            {
-                fmt += MBSTRING_FLASH_MCR("Lf");
-                sprintf(t, fmt.c_str(), value);
-            }
-
+            if (type == 2)
+                fmt += MBSTRING_FLASH_MCR("L");
+            fmt += MBSTRING_FLASH_MCR("f");
+            sprintf(t, fmt.c_str(), value);
             trim(t);
         }
 
@@ -1582,7 +1567,7 @@ private:
     {
         void *p;
         size_t newLen = getReservedLen(len);
-#if defined(BOARD_HAS_PSRAM) && defined(MB_STRING_USE_PSRAM)
+#if defined(BOARD_HAS_PSRAM)
         if (ESP.getPsramSize() > 0)
             p = (void *)ps_malloc(newLen);
         else
@@ -1733,7 +1718,7 @@ private:
             {
                 int slen = length();
 
-#if defined(BOARD_HAS_PSRAM) && defined(MB_STRING_USE_PSRAM)
+#if defined(BOARD_HAS_PSRAM)
                 if (ESP.getPsramSize() > 0)
                     buf = (char *)ps_realloc(buf, len);
                 else
@@ -1749,7 +1734,7 @@ private:
             }
             else
             {
-#if defined(BOARD_HAS_PSRAM) && defined(MB_STRING_USE_PSRAM)
+#if defined(BOARD_HAS_PSRAM)
                 if (ESP.getPsramSize() > 0)
                     buf = (char *)ps_malloc(len);
                 else

@@ -1,9 +1,9 @@
 /*
- * FirebaseJson, version 3.0.10
+ * FirebaseJson, version 3.0.9
  *
  * The Easiest Arduino library to parse, create and edit JSON object using a relative path.
  *
- * Created March 25, 2024
+ * Created June 20, 2024
  *
  * Features
  * - Using path to access node element in search style e.g. json.get(result,"a/b/c")
@@ -80,8 +80,8 @@ bool FirebaseJsonBase::setRaw(const char *raw)
 
     if (raw)
     {
-        size_t i = 0;
-        while (i < strlen(raw) && raw[i] == ' ')
+        size_t i = 0, len = strlen(raw);
+        while (i < len && (raw[i] == ' ' || raw[i] == '\t' || raw[i] == '\r' || raw[i] == '\n'))
         {
             i++;
         }

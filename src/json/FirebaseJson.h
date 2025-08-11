@@ -1,9 +1,9 @@
 /*
- * FirebaseJson, version 3.0.10
+ * FirebaseJson, version 3.0.9
  *
  * The Easiest Arduino library to parse, create and edit JSON object using a relative path.
  *
- * Created March 25, 2024
+ * Created June 20, 2024
  *
  * Features
  * - Using path to access node element in search style e.g. json.get(result,"a/b/c")
@@ -128,10 +128,6 @@
 #endif
 #endif
 
-#if defined(FIREBASEJSON_USE_PSRAM) || defined(FIREBASE_USE_PSRAM)
-#define MB_STRING_USE_PSRAM
-#endif
-
 #include "MB_String.h"
 
 using namespace mb_string;
@@ -166,7 +162,7 @@ extern "C"
 
 #define Serial_Printf Serial.printf
 
-#elif defined(ARDUINO_UNOWIFIR4) || defined(ARDUINO_ARCH_RP2040) || defined(ARDUINO_ARCH_SAMD) || defined(ARDUINO_ARCH_STM32) || defined(ARDUINO_ARCH_STM32F1) || defined(ARDUINO_ARCH_STM32F4) || defined(__AVR__)
+#elif defined(ARDUINO_ARCH_RP2040) || defined(ARDUINO_ARCH_SAMD) || defined(ARDUINO_ARCH_STM32) || defined(ARDUINO_ARCH_STM32F1) || defined(ARDUINO_ARCH_STM32F4) || defined(__AVR__)
 
 #include "extras/print/fb_json_print.h"
 
@@ -221,7 +217,7 @@ static void *fb_js_malloc(size_t len)
     void *p;
     size_t newLen = getReservedLen(len);
 
-#if defined(BOARD_HAS_PSRAM) && defined(MB_STRING_USE_PSRAM)
+#if defined(BOARD_HAS_PSRAM) 
     if (ESP.getPsramSize() > 0)
         p = (void *)ps_malloc(newLen);
     else
@@ -256,7 +252,7 @@ static void fb_js_free(void *ptr)
 static void *fb_js_realloc(void *ptr, size_t sz)
 {
     size_t newLen = getReservedLen(sz);
-#if defined(BOARD_HAS_PSRAM) && defined(MB_STRING_USE_PSRAM)
+#if defined(BOARD_HAS_PSRAM)
     if (ESP.getPsramSize() > 0)
         ptr = (void *)ps_realloc(ptr, newLen);
     else
@@ -879,7 +875,7 @@ protected:
     {
         void *p;
         size_t newLen = getReservedLen(len);
-#if defined(BOARD_HAS_PSRAM) && defined(MB_STRING_USE_PSRAM)
+#if defined(BOARD_HAS_PSRAM)
         if (ESP.getPsramSize() > 0)
             p = (void *)ps_malloc(newLen);
         else

@@ -1,34 +1,11 @@
 #ifndef ESP_GOOGLE_SHEET_CLIENT_VERSION
-#define ESP_GOOGLE_SHEET_CLIENT_VERSION "1.4.10"
+#define ESP_GOOGLE_SHEET_CLIENT_VERSION "1.4.11"
 #endif
 
-/**
- * Google Sheet Client, ESP_Google_Sheet_Client.h v1.4.10
+/*
+ * SPDX-FileCopyrightText: 2025 Suwatchai K. <suwatchai@outlook.com>
  *
- * This library supports Espressif ESP8266 and ESP32 MCUs
- *
- * Created August 11, 2025
- *
- * The MIT License (MIT)
- * Copyright (c) 2025 K. Suwatchai (Mobizt)
- *
- *
- * Permission is hereby granted, free of charge, to any person returning a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * SPDX-License-Identifier: MIT
  */
 
 #include <Arduino.h>
@@ -129,8 +106,8 @@ class GSheet_Values
     friend class ESP_Google_Sheet_Client;
 
 public:
-    GSheet_Values(){};
-    ~GSheet_Values(){};
+    GSheet_Values() {};
+    ~GSheet_Values() {};
 
     /** Get a range of values from a spreadsheet.
      *
@@ -1151,8 +1128,8 @@ class GSheet_Sheets
     friend class ESP_Google_Sheet_Client;
 
 public:
-    GSheet_Sheets(){};
-    ~GSheet_Sheets(){};
+    GSheet_Sheets() {};
+    ~GSheet_Sheets() {};
 
     /** Copies a single sheet from a spreadsheet to another spreadsheet.
      *
@@ -1241,8 +1218,8 @@ class GSheet_Metadata
     friend class ESP_Google_Sheet_Client;
 
 public:
-    GSheet_Metadata(){};
-    ~GSheet_Metadata(){};
+    GSheet_Metadata() {};
+    ~GSheet_Metadata() {};
 
     /** Get the developer metadata with the specified ID.
      *
@@ -1468,8 +1445,8 @@ public:
      * @param client The pointer to Arduino Client derived class of SSL Client.
      * @param networkConnectionCB The function that handles the network connection.
      * @param networkStatusCB The function that handle the network connection status acknowledgement.
-     * 
-     * Due to the client pointer is assigned, to avoid dangling pointer, 
+     *
+     * Due to the client pointer is assigned, to avoid dangling pointer,
      * client should be existed as long as it was used for transportation.
      */
     void setExternalClient(Client *client, ESP_GOOGLE_SHEET_CLIENT_NetworkConnectionRequestCallback networkConnectionCB,
@@ -1486,8 +1463,8 @@ public:
      * @param apn The GPRS APN (Access Point Name).
      * @param user The GPRS user.
      * @param password The GPRS password.
-     * 
-     * Due to the client and modem pointers are assigned, to avoid dangling pointer, 
+     *
+     * Due to the client and modem pointers are assigned, to avoid dangling pointer,
      * client and modem should be existed as long as it was used for transportation.
      */
     void setGSMClient(Client *client, void *modem = nullptr, const char *pin = nullptr, const char *apn = nullptr, const char *user = nullptr, const char *password = nullptr)

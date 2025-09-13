@@ -434,88 +434,85 @@ void GAuthManager::tokenProcessingTask()
 
     time_t now = getTime();
 
-    while (!ret && config->signer.tokens.status != token_status_ready)
+    Utils::idle();
+    // check time if clock synching once set in the JWT token generating process (during beginning step)
+    // or valid time required for SSL handshake in ESP8266
+    if (!config->internal.clock_rdy)
     {
-        Utils::idle();
-        // check time if clock synching once set in the JWT token generating process (during beginning step)
-        // or valid time required for SSL handshake in ESP8266
+        if (readyToSync())
+        {
+            if (isSyncTimeOut())
+            {
+                config->signer.tokens.error.message.clear();
+                if (_cli_type == esp_google_sheet_client_type_internal_basic_client)
+                    setTokenError(ESP_GOOGLE_SHEET_CLIENT_ERROR_NTP_SYNC_TIMED_OUT);
+                else
+                    setTokenError(ESP_GOOGLE_SHEET_CLIENT_ERROR_SYS_TIME_IS_NOT_READY);
+                sendTokenStatusCB();
+                config->signer.tokens.status = token_status_on_initialize;
+                config->internal.last_jwt_generation_error_cb_millis = 0;
+            }
+
+            // reset flag to allow clock synching execution again in ut->syncClock if clocck synching was timed out
+            config->internal.clock_synched = false;
+            reconnect();
+        }
+
+        // check or set time again
+        tryGetTime();
+
+        // exit task immediately if time is not ready synched
+        // which handleToken function should run repeatedly to enter this function again.
         if (!config->internal.clock_rdy)
         {
-            if (readyToSync())
-            {
-                if (isSyncTimeOut())
-                {
-                    config->signer.tokens.error.message.clear();
-                    if (_cli_type == esp_google_sheet_client_type_internal_basic_client)
-                        setTokenError(ESP_GOOGLE_SHEET_CLIENT_ERROR_NTP_SYNC_TIMED_OUT);
-                    else
-                        setTokenError(ESP_GOOGLE_SHEET_CLIENT_ERROR_SYS_TIME_IS_NOT_READY);
-                    sendTokenStatusCB();
-                    config->signer.tokens.status = token_status_on_initialize;
-                    config->internal.last_jwt_generation_error_cb_millis = 0;
-                }
-
-                // reset flag to allow clock synching execution again in ut->syncClock if clocck synching was timed out
-                config->internal.clock_synched = false;
-                reconnect();
-            }
-
-            // check or set time again
-            tryGetTime();
-
-            // exit task immediately if time is not ready synched
-            // which handleToken function should run repeatedly to enter this function again.
-            if (!config->internal.clock_rdy)
-            {
-                config->signer.tokenTaskRunning = false;
-                return;
-            }
+            config->signer.tokenTaskRunning = false;
+            return;
         }
+    }
 
-        // create signed JWT token and exchange with auth token
-        if (config->signer.step == gauth_jwt_generation_step_begin &&
-            (millis() - config->internal.last_jwt_begin_step_millis > config->timeout.tokenGenerationBeginStep ||
-             config->internal.last_jwt_begin_step_millis == 0))
+    // create signed JWT token and exchange with auth token
+    if (config->signer.step == gauth_jwt_generation_step_begin &&
+        (millis() - config->internal.last_jwt_begin_step_millis > config->timeout.tokenGenerationBeginStep ||
+         config->internal.last_jwt_begin_step_millis == 0))
+    {
+
+        // time must be set first
+        tryGetTime();
+        config->internal.last_jwt_begin_step_millis = millis();
+
+        if (config->internal.clock_rdy)
+            config->signer.step = gauth_jwt_generation_step_encode_header_payload;
+    }
+    // encode the JWT token
+    else if (config->signer.step == gauth_jwt_generation_step_encode_header_payload)
+    {
+        if (createJWT())
+            config->signer.step = gauth_jwt_generation_step_sign;
+    }
+    // sign the JWT token
+    else if (config->signer.step == gauth_jwt_generation_step_sign)
+    {
+        if (createJWT())
+            config->signer.step = gauth_jwt_generation_step_exchange;
+    }
+    // sending JWT token requst for auth token
+    else if (config->signer.step == gauth_jwt_generation_step_exchange)
+    {
+
+        if (readyToRefresh())
         {
+            // sending a new request
+            ret = requestTokens(false);
 
-            // time must be set first
-            tryGetTime();
-            config->internal.last_jwt_begin_step_millis = millis();
+            // send error cb
+            if (!reconnect())
+                handleTaskError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_ERROR_CONNECTION_LOST);
 
-            if (config->internal.clock_rdy)
-                config->signer.step = gauth_jwt_generation_step_encode_header_payload;
-        }
-        // encode the JWT token
-        else if (config->signer.step == gauth_jwt_generation_step_encode_header_payload)
-        {
-            if (createJWT())
-                config->signer.step = gauth_jwt_generation_step_sign;
-        }
-        // sign the JWT token
-        else if (config->signer.step == gauth_jwt_generation_step_sign)
-        {
-            if (createJWT())
-                config->signer.step = gauth_jwt_generation_step_exchange;
-        }
-        // sending JWT token requst for auth token
-        else if (config->signer.step == gauth_jwt_generation_step_exchange)
-        {
+            // reset state and exit loop
+            config->signer.step = ret || getTime() - now > 3599 ? gauth_jwt_generation_step_begin : gauth_jwt_generation_step_exchange;
 
-            if (readyToRefresh())
-            {
-                // sending a new request
-                ret = requestTokens(false);
-
-                // send error cb
-                if (!reconnect())
-                    handleTaskError(ESP_GOOGLE_SHEET_CLIENT_ERROR_TCP_ERROR_CONNECTION_LOST);
-
-                // reset state and exit loop
-                config->signer.step = ret || getTime() - now > 3599 ? gauth_jwt_generation_step_begin : gauth_jwt_generation_step_exchange;
-
-                _token_processing_task_enable = false;
-                ret = true;
-            }
+            _token_processing_task_enable = false;
+            ret = true;
         }
     }
 

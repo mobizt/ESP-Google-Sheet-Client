@@ -1,19 +1,17 @@
-name: Compile Library
+name: Compile Examples
 
 on:
   push:
     paths-ignore:
       - '.github/workflows/cpp_lint.yml'
-      - '.github/workflows/compile_examples.yml'
-      - 'examples/**'
+      - '.github/workflows/compile_library.yml'
   pull_request:
     paths-ignore:
       - '.github/workflows/cpp_lint.yml'
-      - '.github/workflows/compile_examples.yml'
-      - 'examples/**'
+      - '.github/workflows/compile_library.yml'
 
 jobs:
-  build:
+  compile_examples:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -57,7 +55,6 @@ jobs:
 
         [env]
         framework = arduino
-        test_framework = unity
 
         [env:d1_mini_ci]
         platform = espressif8266
@@ -68,10 +65,9 @@ jobs:
         board = esp32dev
         EOF
 
-    - name: Create dummy sketch
+    - name: Compile all examples
       run: |
-        echo '#include <Arduino.h>\nvoid setup() {}\nvoid loop() {}' > dummy.cpp
-
-    - name: Run PlatformIO CI Build
-      run: |
-        pio ci --lib=. dummy.cpp --project-conf=platformio.ini -e ${{ matrix.board }}_ci
+        for example in examples/*/*.ino; do
+          echo "Compiling $example for ${{ matrix.board }}"
+          pio ci --lib=. "$example" --project-conf=platformio.ini -e ${{ matrix.board }}_ci || exit 1
+        done

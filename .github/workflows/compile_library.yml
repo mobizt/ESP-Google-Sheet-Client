@@ -19,53 +19,55 @@ jobs:
       fail-fast: false
       matrix:
         board:
-          - "d1_mini"
-          - "esp32dev"
+          - d1_mini
+          - esp32dev
 
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: ${{ runner.os }}-pip-
+    - name: Cache pip
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: ${{ runner.os }}-pip-
 
-      - name: Cache PlatformIO
-        uses: actions/cache@v4
-        with:
-          path: ~/.platformio
-          key: ${{ runner.os }}-${{ hashFiles('platformio.ini') }}
-          restore-keys: ${{ runner.os }}-
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
+    - name: Cache PlatformIO
+      uses: actions/cache@v4
+      with:
+        path: ~/.platformio
+        key: ${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+        restore-keys: ${{ runner.os }}-
 
-      - name: Install PlatformIO
-        run: |
-          python -m pip install --upgrade pip
-          pip install --upgrade platformio
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
 
-      - name: Run PlatformIO CI Build
-        run: |
-          # Create platformio.ini and run pio ci in the same shell to ensure file visibility
-          cat << EOF > platformio.ini
-          [platformio]
-          lib_dir = .
-          
-          [env]
-          framework = arduino
-          test_framework = unity
-          
-          [env:d1_mini_ci]
-          platform = espressif8266
-          board = d1_mini
-          
-          [env:esp32dev_ci]
-          platform = espressif32
-          board = esp32dev
-          EOF
-          
-          # The command now includes the source path '.'
-          pio ci --lib=. . -e ${{ matrix.board }}_ci
+    - name: Install PlatformIO
+      run: |
+        python -m pip install --upgrade pip
+        pip install --upgrade platformio
+
+    - name: Run PlatformIO CI Build
+      run: |
+        # Create platformio.ini and run pio ci in the same shell
+        cat << EOF > platformio.ini
+        [platformio]
+        lib_dir = .
+        
+        [env]
+        framework = arduino
+        test_framework = unity
+        
+        [env:d1_mini_ci]
+        platform = espressif8266
+        board = d1_mini
+        
+        [env:esp32dev_ci]
+        platform = espressif32
+        board = esp32dev
+        EOF
+
+        # Compile the library using the matrix board
+        pio ci --lib=. . -e ${{ matrix.board }}_ci

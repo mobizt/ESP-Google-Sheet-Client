@@ -11,105 +11,60 @@ on:
       - '.github/workflows/compile_library.yml'
 
 jobs:
-  esp8266:
+  compile_examples:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        example: 
-        - "examples/Sheets/CopyTo/CopyTo.ino"
-        - "examples/Spreadsheets/Create/Create.ino"
-        - "examples/Spreadsheets/Delete/Delete.ino"
-        - "examples/Spreadsheets/Get/Get.ino"
-        - "examples/Spreadsheets/List/List.ino"
-        - "examples/Values/Append/Append.ino"
-        - "examples/Values/Clear/Clear.ino"
-        - "examples/Values/Read/Read.ino"
-        - "examples/Values/Update/Update.ino"
-        - "examples/Values/Create_Update_Read/Create_Update_Read.ino"
-     
+        board:
+          - d1_mini
+          - esp32dev
+        example:
+          - "examples/Sheets/CopyTo/CopyTo.ino"
+          - "examples/Spreadsheets/Create/Create.ino"
+          - "examples/Spreadsheets/Delete/Delete.ino"
+          - "examples/Spreadsheets/Get/Get.ino"
+          - "examples/Spreadsheets/List/List.ino"
+          - "examples/Values/Append/Append.ino"
+          - "examples/Values/Clear/Clear.ino"
+          - "examples/Values/Read/Read.ino"
+          - "examples/Values/Update/Update.ino"
+          - "examples/Values/Create_Update_Read/Create_Update_Read.ino"
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Cache pip
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: ${{ runner.os }}-pip-
-    - name: Cache PlatformIO
-      uses: actions/cache@v2
-      with:
-        path: ~/.platformio
-        key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
-    - name: Set up Python
-      uses: actions/setup-python@v2
-    - name: Install PlatformIO
-      run: |
-        python -m pip install --upgrade pip
-        pip install --upgrade platformio
-    - name: Install 3rd party dependecies
-      run: | 
-        pio lib -g install \
-        https://github.com/mobizt/ESP-Google-Sheet-Client
-        
-    - name: update library
-      run: |
-        pio lib --global update
+      - uses: actions/checkout@v4
 
-    - name: Run PlatformIO Examples
-      run: |
-        pio ci --board=d1_mini 
-      env:
-        PLATFORMIO_CI_SRC: ${{ matrix.example }}
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
 
-  esp32:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        example: 
-        - "examples/Sheets/CopyTo/CopyTo.ino"
-        - "examples/Spreadsheets/Create/Create.ino"
-        - "examples/Spreadsheets/Delete/Delete.ino"
-        - "examples/Spreadsheets/Get/Get.ino"
-        - "examples/Spreadsheets/List/List.ino"
-        - "examples/Values/Append/Append.ino"
-        - "examples/Values/Clear/Clear.ino"
-        - "examples/Values/Read/Read.ino"
-        - "examples/Values/Update/Update.ino"
-        - "examples/Values/Create_Update_Read/Create_Update_Read.ino"
-    steps:
-    - uses: actions/checkout@v2
-    - name: Cache pip
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: ${{ runner.os }}-pip-
-    - name: Cache PlatformIO
-      uses: actions/cache@v2
-      with:
-        path: ~/.platformio
-        key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
-    - name: Set up Python
-      uses: actions/setup-python@v2
-    - name: Install PlatformIO
-      run: |
-        python -m pip install --upgrade pip
-        pip install --upgrade platformio
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: ${{ runner.os }}-
 
-    - name: Install 3rd party dependecies
-      run: | 
-        pio lib -g install \
-        https://github.com/mobizt/ESP-Google-Sheet-Client
-        
-    - name: update library
-      run: |
-        pio lib --global update
+      - name: Set up Python and Install PlatformIO
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
 
-    - name: Run PlatformIO Examples
-      run: |
-        pio ci --board=esp32dev 
-      env:
-        PLATFORMIO_CI_SRC: ${{ matrix.example }}
+      - name: Install PlatformIO Core
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade platformio
+
+      - name: Install 3rd party dependency
+        run: pio lib -g install https://github.com/mobizt/ESP-Google-Sheet-Client
+
+      - name: Update library
+        run: pio lib --global update
+
+      - name: Run PlatformIO CI for ${{ matrix.board }} and ${{ matrix.example }}
+        run: pio ci --board=${{ matrix.board }}
+        env:
+          PLATFORMIO_CI_SRC: ${{ matrix.example }}

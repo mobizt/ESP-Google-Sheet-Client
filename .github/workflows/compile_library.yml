@@ -14,40 +14,57 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        board: 
+        board:
           - "d1_mini"
           - "esp32dev"
+
     steps:
-    - uses: actions/checkout@v2
-    - name: Cache pip
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: ${{ runner.os }}-pip-
-    - name: Cache PlatformIO
-      uses: actions/cache@v2
-      with:
-        path: ~/.platformio
-        key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
-        restore-keys: ${{ runner.os }}-
-    - name: Set up Python
-      uses: actions/setup-python@v2
-    - name: Install PlatformIO
-      run: |
-        python -m pip install --upgrade pip
-        pip install --upgrade platformio
+      - uses: actions/checkout@v4
 
-    - name: Create main file
-      run: |
-        echo "#include <Arduino.h>" >> src/main.ino
-        echo "void setup() {}" >> src/main.ino
-        echo "void loop() {}" >> src/main.ino
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
 
-    - name: Run PlatformIO
-      run: pio ci --board=${{ matrix.board }} src
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: ${{ runner.os }}-
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+
+      - name: Install PlatformIO
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade platformio
+
+      - name: Create platformio.ini for CI
+        run: |
+          cat << EOF > platformio.ini
+          [platformio]
+          lib_dir = . 
+          
+          [env]
+          framework = arduino
+          test_framework = unity
+          
+          [env:d1_mini_ci]
+          platform = espressif8266
+          board = d1_mini
+          
+          [env:esp32dev_ci]
+          platform = espressif32
+          board = esp32dev
+          EOF
+      
+      - name: Run PlatformIO Compile Check
+        run: pio ci --lib=. -e ${{ matrix.board }}_ci

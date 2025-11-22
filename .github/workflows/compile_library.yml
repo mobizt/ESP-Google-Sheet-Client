@@ -49,6 +49,7 @@ jobs:
 
       - name: Run PlatformIO CI Build
         run: |
+          # Create platformio.ini and run pio ci in the same shell to ensure file visibility
           cat << EOF > platformio.ini
           [platformio]
           lib_dir = .
@@ -66,4 +67,5 @@ jobs:
           board = esp32dev
           EOF
           
+          # The command now includes the source path '.'
           pio ci --lib=. . -e ${{ matrix.board }}_ci

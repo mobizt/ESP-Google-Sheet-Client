@@ -51,7 +51,7 @@ jobs:
         run: |
           cat << EOF > platformio.ini
           [platformio]
-          lib_dir = . 
+          lib_dir = .
           
           [env]
           framework = arduino
@@ -67,4 +67,5 @@ jobs:
           EOF
       
       - name: Run PlatformIO Compile Check
-        run: pio ci --lib=. -e ${{ matrix.board }}_ci
+        # FIX: Added the critical '.' argument to compile a minimal sketch
+        run: pio ci --lib=. . -e ${{ matrix.board }}_ci

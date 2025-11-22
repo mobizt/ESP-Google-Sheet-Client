@@ -51,23 +51,23 @@ jobs:
 
     - name: Run PlatformIO CI Build
       run: |
-        # Create platformio.ini and run pio ci in the same shell
+        # Create platformio.ini dynamically
         cat << EOF > platformio.ini
         [platformio]
         lib_dir = .
-        
+
         [env]
         framework = arduino
         test_framework = unity
-        
+
         [env:d1_mini_ci]
         platform = espressif8266
         board = d1_mini
-        
+
         [env:esp32dev_ci]
         platform = espressif32
         board = esp32dev
         EOF
 
-        # Compile the library using the matrix board
-        pio ci --lib=. . -e ${{ matrix.board }}_ci
+        # Compile the library using the matrix board environment
+        pio ci --lib=. . --project-conf=platformio.ini -e ${{ matrix.board }}_ci

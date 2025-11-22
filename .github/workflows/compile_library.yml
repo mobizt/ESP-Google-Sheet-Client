@@ -47,7 +47,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install --upgrade platformio
 
-      - name: Create platformio.ini for CI
+      - name: Run PlatformIO CI Build
         run: |
           cat << EOF > platformio.ini
           [platformio]
@@ -65,7 +65,5 @@ jobs:
           platform = espressif32
           board = esp32dev
           EOF
-      
-      - name: Run PlatformIO Compile Check
-        # FIX: Added the critical '.' argument to compile a minimal sketch
-        run: pio ci --lib=. . -e ${{ matrix.board }}_ci
+          
+          pio ci --lib=. . -e ${{ matrix.board }}_ci

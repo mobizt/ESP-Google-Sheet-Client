@@ -13,11 +13,7 @@
 #include "../GS_Const.h"
 #include "../mbfs/MB_FS.h"
 #include "../GS_Helper.h"
-#if __has_include(<ESP_SSLClient.h>)
 #include <ESP_SSLClient.h>
-#else
-#include "./client/SSLClient/ESP_SSLClient.h"
-#endif
 #include "../GS_Network.h"
 
 #if defined(ESP32)

@@ -51,8 +51,6 @@ board_build.filesystem_size = 1m
 See this Arduino-Pico SDK [documentation](https://arduino-pico.readthedocs.io/en/latest/) for more information.
 
 
-
-
 ## Prerequisites
 
 This library uses the Service Account credentials to create the short-lived access token for Google API authentication, which will expire in 1 hour and will be refreshed automatically.
